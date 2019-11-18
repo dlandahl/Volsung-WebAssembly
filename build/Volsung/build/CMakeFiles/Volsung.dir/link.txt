@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../lib/libVolsung.a  CMakeFiles/Volsung.dir/src/AudioDataflow.cc.o CMakeFiles/Volsung.dir/src/AudioObject.cc.o CMakeFiles/Volsung.dir/src/Graph.cc.o CMakeFiles/Volsung.dir/src/Objects.cc.o CMakeFiles/Volsung.dir/src/Parser.cc.o
+/usr/bin/ranlib ../lib/libVolsung.a

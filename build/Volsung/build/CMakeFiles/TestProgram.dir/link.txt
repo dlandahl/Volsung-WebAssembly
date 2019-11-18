@@ -1,0 +1,1 @@
+/usr/bin/c++   -Wfatal-errors -O3   CMakeFiles/TestProgram.dir/test/TestProgram.cpp.o  -o TestProgram ../lib/libVolsung.a 
