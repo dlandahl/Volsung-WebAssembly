@@ -1,1 +1,0 @@
-/usr/bin/c++   -Wfatal-errors -O3   CMakeFiles/WebVolsung.dir/src/main.cc.o  -o WebVolsung -lVolsung/lib/Volsung 
