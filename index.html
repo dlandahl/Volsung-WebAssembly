@@ -6,7 +6,7 @@
 	html * {
 		font-size: 1em !important;
 		color: #000 !important;
-		font-family: Roboto Mono !important;
+		font-family: "Lucida Console", Monaco, monospace
 	}
 
 	.column {
@@ -34,15 +34,16 @@
   <label for="preset">Choose a preset:</label>
   <select id="preset" onchange="load_preset();">
 	<option value="tone">Tone Generator</option>
-	<option value="empty">Empty</option>
 	<option value="pentatonic">Pentatonic Melody</option>
 	<option value="additive">Additive Magic</option>
+	<option value="thx">THX Logo</option>
+	<option value="empty">Empty</option>
   </select>
 <div class="row">
   <div class="column"><textarea id="code">osc~ 440 -> output</textarea></div>
   <div class="column"><textarea id="out" style="background-color: #bbbbbb;" disabled=true></textarea></div>
 </div>
-  <button onclick="parse_code()">Interpret</button>
+  <button id="interp" onclick="parse_code()" disabled="true">Interpret</button>
   <label id="indicator">WASM still loading...</label>
   <script>
 		  var datal = [ 0 ];
@@ -59,7 +60,10 @@
 		  }
 
 		  var Module = {
-			  'onRuntimeInitialized': function() { document.getElementById("indicator").innerHTML = "WASM is ready."; },
+			  'onRuntimeInitialized': function() {
+				  document.getElementById("indicator").innerHTML = "WASM is ready.";
+				  document.getElementById("interp").disabled = false;
+			  },
 			  'print': function(message) { document.getElementById("out").innerHTML += message + '\n'; }
 		  };
 	
@@ -82,6 +86,8 @@
 					  y[n] = datar[n];
 				  }
 			  }
+			  set_mono();
+			  length = 44100;
 			  var source = audio_context.createBufferSource();
 
 			  source.buffer = buffer;
@@ -103,28 +109,31 @@
 			if (document.getElementById("preset").value == "tone") {
 				document.getElementById("code").value = "osc~ 440 -> output"
 			}
-
 			if (document.getElementById("preset").value == "pentatonic") {
 				document.getElementById("code").value = `
-&length sf * 10
+&mono 0
 
 ; Generate the frequencies of the pentatonic scale
 scale: { 0, 2, 4, 7, 9 }
-root: 330
-freqs: (2^(1/12))^scale * root
+root: 440
+freqs: (2^(1/12))^(scale - 5) * root
 
+
+; Try editing these
 seed: 7
+rate: sf / 3
+length: sf * 10
 
+&length length
 
 vca: mult~
-c: clock~ sf / 3
 clock: add~ 0
-c -> ddl~ seed -> clock
+clock~ rate -> ddl~ seed -> clock
 
 ; Trigger envelope into VCA
 eg: eg~
 clock
--> 0|eg
+-> eg
 -> filter~ 30
 -> 1|vca
 
@@ -134,11 +143,11 @@ snh: snh~
 clock -> 1|snh
 noise~
 -> *0.5 -> +0.5
--> * sf/3 + sf/10
+-> *sf/3 + sf/10
 -> snh -> 1|eg
 
 
-; Generate sine signal and output
+; Generate sine melody
 index: snh~
 clock -> 1|index
 sound: add~ 0
@@ -152,31 +161,57 @@ noise~ -> index
 -> sound
 
 
-; Delay circuit
-delay: ddl~ 44100 / 2
+; Echo circuit
+delay: [2] ddl~ { sf / 2, sf / 1.2 }
+feedback: [2] mult~ 0.5
+sound <> delay
+=> feedback
+=> delay
 
-sound -> delay
--> mult~ 0.6
--> delay
 
--> *0.5 -> sat~ -> output
+; Saturate and output
+delay[0] -> sat~ -> /3 -> 0|output
+delay[1] -> sat~ -> /3 -> 1|output
+
 `;
 			}
-
 			if (document.getElementById("preset").value == "additive") {
 				document.getElementById("code").value = `
 &length sf * 2
 
+; Try changing this to a 2. You will get a square instead of a saw.
+mult: 1
+
 N: 30
-n: 1..N
+n: 1..N*mult|mult
 
 partials: [N] osc~ n*200
 gain: [N] div~ n
-gate: [N] mult~ n*0
-threshold: [N] comp~ n / 20
+gate: [N] mult~
+threshold: [N] comp~ n / 20 / mult
 
-partials => gain => gate >> *0.5 -> output
+partials => gain => gate >> *0.3 -> output
 timer~ 1 <> threshold => 1|gate
+
+`
+			}
+			if (document.getElementById("preset").value == "thx") {
+				document.getElementById("code").value = `
+&length sf * 5
+
+N: 5
+swarm: [N] saw~ 
+
+offset: [N] mult~ { r, r, r, r, r } * 100
+base_frequency: [N] add~ 55 * (1..N)
+
+timer~
+-> sat~ -> *-1 -> +1
+<> offset
+=> base_frequency
+=> swarm
+>> *0.1 -> output
+
 `
 			}
 		}
@@ -185,3 +220,5 @@ timer~ 1 <> threshold => 1|gate
 		  
 </script> </body>
 </html>
+
+
