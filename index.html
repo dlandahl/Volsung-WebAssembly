@@ -34,6 +34,7 @@
   <select id="preset" onchange="load_preset();">
 	<option value="tone">Tone Generator</option>
 	<option value="pentatonic">Random Pentatonic</option>
+	  <option value="fm">Frequency Modulation</option>
 	  <option value="additive">Additive Synthesis</option>
 	  <option value="thx">Swarm Generator</option>
 	  <option value="empty">Empty</option>
@@ -258,6 +259,25 @@ timer~
 ;
 `
 		  }
+		  if (preset == "fm") {
+			  document.getElementById("code").value = `
+; spaaaace
+carrier_f: 220
+ratio: 0.21
+
+modulator_f: carrier_f * ratio
+index: mult~
+
+osc~ modulator_f
+-> index
+-> add~ carrier_f -> osc~
+-> output
+
+timer~ -> ^2 -> *100 -> 1|index
+
+&length sf * 5
+`
+		}
 	  }
 
 	  </script><script src="a.out.js?version=2">
