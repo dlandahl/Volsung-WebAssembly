@@ -29,7 +29,7 @@ int main(int argc, char ** argv)
 				set_mono();
 			});
 		}
-		else {
+		if (!arguments[0].get_value<float>()) {
 			EM_ASM_({
 				unset_mono();
 			});
