@@ -1,7 +1,7 @@
-<html>
+<html lang="en">
 <head>
-    <meta content="">
-    <style>
+  <meta charset="utf-8"/>
+  <style>
 
 	html * {
 		font-size: 1em !important;
@@ -15,7 +15,6 @@
 		padding: 10px;
 	}
 
-	/* Clear floats after the columns */
 	.row:after {
 		content: "";
 		display: table;
@@ -28,51 +27,78 @@
 		height: calc(100% - 85px);
 		background-color: #e8e8e8;
 	}
-	</style>
+  </style>
 </head>
 <body>
   <label for="preset">Choose a preset:</label>
   <select id="preset" onchange="load_preset();">
 	<option value="tone">Tone Generator</option>
-	<option value="pentatonic">Pentatonic Melody</option>
-	<option value="additive">Additive Magic</option>
-	<option value="thx">THX Logo</option>
-	<option value="empty">Empty</option>
-  </select>
-<div class="row">
-  <div class="column"><textarea id="code">osc~ 440 -> output</textarea></div>
-  <div class="column"><textarea id="out" style="background-color: #bbbbbb;" disabled=true></textarea></div>
-</div>
-  <button id="interp" onclick="parse_code()" disabled="true">Interpret</button>
-  <label id="indicator">WASM still loading...</label>
-  <script>
-		  var datal = [ 0 ];
-		  var datar = [ 0 ];
-		  var length = 44100;
-		
-		  var mono = true;
-		  function set_mono() { mono = true; }
-		  function unset_mono() { mono = false; }
-     	  function set_length(x) { length = x; }
-		  function add_to_data(x, y) {
-			  datal.push(x);
-			  datar.push(y);
-		  }
+	<option value="pentatonic">Random Pentatonic</option>
+	  <option value="additive">Additive Synthesis</option>
+	  <option value="thx">Swarm Generator</option>
+	  <option value="empty">Empty</option>
+	</select>
+	<div class="row">
+	  <div class="column"><textarea id="code" spellcheck="false">osc~ 440 -> output</textarea></div>
+	  <div class="column"><textarea id="out" spellcheck="false" style="background-color: #bbbbbb;" disabled=true></textarea></div>
+	</div>
+	<button id="interp" onclick="parse_code()" disabled="true">Interpret</button>
+	<button id="kill" onclick="source.stop()" disabled="true">Stop</button>
+	<label id="indicator">WASM still loading...</label>
+	<script>
+	  var datal = [ 0 ];
+	  var datar = [ 0 ];
+	  var length = 44100;
+	  
+	  var mono = true;
+	  function set_mono() { mono = true; }
+	  function unset_mono() { mono = false; }
+      function set_length(x) { length = x; }
+	  function add_to_data(x, y) {
+		  datal.push(x);
+		  datar.push(y);
+	  }
 
-		  var Module = {
-			  'onRuntimeInitialized': function() {
-				  document.getElementById("indicator").innerHTML = "WASM is ready.";
-				  document.getElementById("interp").disabled = false;
-			  },
-			  'print': function(message) { document.getElementById("out").innerHTML += message + '\n'; }
-		  };
+	  function log(message)
+	  {
+		  document.getElementById("out").innerHTML += message + '\n';
+	  }
+
+	  var Module = {
+		  'onRuntimeInitialized': function() {
+			  document.getElementById("indicator").innerHTML = "WASM is ready.";
+			  document.getElementById("interp").disabled = false;
+		  },
+		  'print': function(message) { log(message); }
+	  };
+	  
+	  var audio_context = new (window.AudioContext || window.webkitAudioContext)();
+	  var source = audio_context.createBufferSource();
+
+	  function parse_code() {
+		  log("========== Running  ==========");
+		  document.getElementById("indicator").innerHTML = "Evaluating...";
+		  document.getElementById("interp").disabled = true;
+		  document.getElementById("kill").disabled = true;
+		  var success = Module.parse(" " + document.getElementById("code").value);
+		  if (!success) {
+			  document.getElementById("interp").disabled = false;
+  			  document.getElementById("kill").disabled = true;
+			  document.getElementById("indicator").innerHTML = "WASM is ready.";
+	  		  log("========== Finished ==========");
 	
-	      function parse_code() {
-			  Module.parse(" " + document.getElementById("code").value);
-			  for (var n = 0; n < length; n++) Module.run();
-			  var audio_context = new (window.AudioContext || window.webkitAudioContext)();
-
+			  return;
+		  }
+		  log("Parsed successfully");
+		  
+		  setTimeout(function() { 
+			  for (var n = 0; n < length; n++) {
+				  Module.run();
+			  }
+			  
+			  audio_context = new (window.AudioContext || window.webkitAudioContext)();
 			  var buffer = audio_context.createBuffer(2, length, 44100);
+			  source = audio_context.createBufferSource();
 
 			  var x = buffer.getChannelData(0);
 			  var y = buffer.getChannelData(1);
@@ -88,29 +114,42 @@
 			  }
 			  set_mono();
 			  length = 44100;
-			  var source = audio_context.createBufferSource();
 
 			  source.buffer = buffer;
 
 			  source.connect(audio_context.destination);
+			  document.getElementById("indicator").innerHTML = "Playing...";
 
-			  source.start();
-			  datal = [];
-			  datar = [];
-		  };
+	  		  setTimeout(function() { 
+	  			  document.getElementById("kill").disabled = false
 
-		 
-		  function load_preset() {
-			  console.log("Loading Preset");
-			  if (document.getElementById("preset").value == "empty") {
-				  console.log("empty");
-				document.getElementById("code").value = ""
-			}
-			if (document.getElementById("preset").value == "tone") {
-				document.getElementById("code").value = "osc~ 440 -> output"
-			}
-			if (document.getElementById("preset").value == "pentatonic") {
-				document.getElementById("code").value = `
+				  source.start();
+				  source.onended = function() {
+					  document.getElementById("interp").disabled = false;
+		  			  document.getElementById("kill").disabled = true;
+					  document.getElementById("indicator").innerHTML = "WASM is ready.";
+			  		  log("========== Finished ==========");
+				  }
+				  
+				  datal = [];
+				  datar = [];
+			  }, 100);
+		  }, 100);
+	  }
+
+	  
+	  function load_preset() {
+		  console.log("Loading Preset");
+		  var preset = document.getElementById("preset").value
+		  
+		  if (preset == "empty") {
+			  document.getElementById("code").value = ""
+		  }
+		  if (preset == "tone") {
+			  document.getElementById("code").value = "osc~ 440 -> output"
+		  }
+		  if (preset == "pentatonic") {
+			  document.getElementById("code").value = `
 &mono 0
 
 ; Generate the frequencies of the pentatonic scale
@@ -172,11 +211,10 @@ sound <> delay
 ; Saturate and output
 delay[0] -> sat~ -> /3 -> 0|output
 delay[1] -> sat~ -> /3 -> 1|output
-
 `;
-			}
-			if (document.getElementById("preset").value == "additive") {
-				document.getElementById("code").value = `
+		  }
+		  if (preset == "additive") {
+			  document.getElementById("code").value = `
 &length sf * 2
 
 ; Try changing this to a 2. You will get a square instead of a saw.
@@ -192,11 +230,10 @@ threshold: [N] comp~ n / 20 / mult
 
 partials => gain => gate >> *0.3 -> output
 timer~ 1 <> threshold => 1|gate
-
 `
-			}
-			if (document.getElementById("preset").value == "thx") {
-				document.getElementById("code").value = `
+		  }
+		  if (preset == "thx") {
+			  document.getElementById("code").value = `
 &length sf * 5
 
 N: 5
@@ -212,13 +249,20 @@ timer~
 => swarm
 >> *0.1 -> output
 
+;  _______ _    _ __   __
+; |__   __| |  | |\\ \\ / /
+;    | |  | |__| | \\ V / 
+;    | |  |  __  |  > <  
+;    | |  | |  | | / . \\ 
+;    |_|  |_|  |_|/_/ \\_\\
+;
 `
-			}
-		}
+		  }
+	  }
 
-	  </script><script src="a.out.js">
-		  
-</script> </body>
+	  </script><script src="a.out.js?version=2">
+	  
+  </script> </body>
 </html>
 
 

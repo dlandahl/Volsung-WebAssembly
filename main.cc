@@ -3,9 +3,10 @@
 #include <fstream>
 #include <array>
 
-#undef assert
+#define NDEBUG
 #include <emscripten/bind.h>
 #include <emscripten.h>
+
 #include "Volsung.hh"
 
 using namespace emscripten;
@@ -36,7 +37,7 @@ int main(int argc, char ** argv)
 	});
 }
 
-void parse(std::string code)
+bool parse(std::string code)
 {
 	Parser parser;
 	parser.source_code = code;
@@ -46,7 +47,7 @@ void parse(std::string code)
 		if (do_thing) output[0][0] = 1;
 		do_thing = false;
 	});
-	parser.parse_program(prog);
+	return parser.parse_program(prog);
 }
 
 void run()
