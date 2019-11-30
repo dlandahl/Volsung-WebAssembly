@@ -206,7 +206,7 @@ std::vector<float> Program::run(std::vector<float> sample)
 		object->data = { 0 };
 		for (int n = 0; n < inputs; n++) object->data[n] = sample[n];
 	}
-
+	
 	run();
 	std::vector<float> out;
 

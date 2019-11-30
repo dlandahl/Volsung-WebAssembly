@@ -101,7 +101,7 @@ Token Lexer::get_next_token()
 		return { string_literal, string };
 	}
 
-	error("Unrecognised Token: " + current());
+    error("Unrecognised Token: " + std::to_string(current()));
 	return { invalid, "" };
 }
 
@@ -117,9 +117,9 @@ bool Lexer::is_digit()
 
 bool Lexer::is_char()
 {
-	return current() >= 'a' && current() <= 'z'
+	return (current() >= 'a' && current() <= 'z')
 		|| current() == '_'
-		|| current() >= 'A' && current() <= 'Z';
+		|| (current() >= 'A' && current() <= 'Z');
 }
 
 bool Lexer::peek(TokenType expected)
@@ -279,6 +279,7 @@ void Parser::make_object(std::string object_type, std::string object_name, std::
 
 void Parser::parse_connection()
 {
+	bool got_newline = false;
 	std::string output_object = get_object_to_connect(), input_object;;
 	int output_index = 0, input_index = 0;
 	ConnectionType connection_type;
@@ -313,9 +314,14 @@ void Parser::parse_connection()
 			expect(numeric_literal);
 			output_index = std::stoi(current.value);
 		} else (output_index = 0);
-		while (peek(newline)) next_token();
+		got_newline = false;
+		while (peek(newline)) { next_token(); got_newline = true; }
 
 	} while (peek(arrow) || peek(many_to_one) || peek(one_to_many) || peek(parallel));
+	if (!got_newline) {
+		next_token();
+		Volsung::assert(line_end(), "Expected newline or connection operator, got " + debug_names[current.type]);
+	}
 }
 
 std::string Parser::get_object_to_connect()

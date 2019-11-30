@@ -1,0 +1,205 @@
+<html>
+  <head>
+    <title>Volsung Interpreter</title>
+    <meta content="" charset="UTF-8">
+
+	<style>
+	  .code {
+		  resize: none;
+		  width: 85%;
+		  height: 68%;
+		  margin: 0 auto;
+		  outline: 8px solid #333;
+		  box-shadow: 5px 5px 8px #000;
+	  }
+	  
+	  body {
+		  background-color: #8888a8;
+		  background-image: url('Sigurd.svg');
+		  background-repeat: no-repeat;
+		  background-attachment: fixed;
+		  background-position: 50% 50%;
+		  margin: 0 auto;
+		  padding: 0 auto;
+	  }
+	  
+	  @font-face {
+		  font-family: norse;
+		  src: url(Norse.otf);
+	  }
+
+	  .column {
+		  float: left;
+		  width: calc(50% - 20px);
+		  padding: 10px;
+		  position: relative;
+	  }
+	  
+	  .row:after {
+		  content: "";
+		  display: table;
+		  clear: both;
+	  }
+
+	  h1 {
+		  font-family: norse;
+		  font-size: 530%;
+		  color: #333;
+		  font-weight: 900;
+		  float: left;
+		  margin: 0 auto;
+		  padding: 0 auto;
+	  }
+
+	  h2 {
+		  font-size: 180%;
+	  }
+
+	  .text {
+		  width: 85%;
+		  height: 60%;
+		  margin: 0 auto;
+		  padding: 10px;
+		  border-radius: 10px;
+		  font-family: Noto sans;
+		  font-size: 100%;
+		  background-color: #ddd;
+		  color: #333;
+		  box-shadow: 5px 5px 8px #000;
+		  overflow-y: scroll;
+	  }
+	  
+	  .header {
+		  background-color: #a8a8c8;
+		  width: 100%;
+		  height: 100px;
+		  position: relative;
+		  box-shadow: 0 2px 0 #222;
+	  }
+
+	  .header_img {
+		  vertical-align: middle;
+		  height: 40px;
+		  position: relative;
+		  float: right;
+		  top: 0px;
+		  left: -30px;
+		  opacity: 0.8;
+	  }
+
+	  .header_text {
+		  font-family: Noto sans;
+		  font-size: 140%;
+		  position: relative;
+		  color: #222;
+		  top: 55%;
+	  }
+
+	  code {
+		  font-family: Fira mono;
+		  background: #ccc;
+		  border-radius: 3px;
+	  }
+
+	  a {
+		  color: #000;
+	  }
+
+	  .tab button {
+		  background-color: #8888a8;
+		  border: none;
+		  outline: none;
+		  cursor: pointer;
+		  padding: 14px 16px;
+		  transition: 0.3s;
+		  font-size: 17px;
+		  float: left;
+	  }
+
+	  .tablinks {
+		  left: 5%;
+		  position: relative;
+	  }
+
+	</style>
+    <link rel="stylesheet" href="lib/base16-dark.css">
+	<link rel="stylesheet" href="lib/codemirror.css">
+	<link href="https://fonts.googleapis.com/css?family=Fira+Mono&display=swap" rel="stylesheet"> 
+  </head>
+  <body>
+	<div class="header">
+	  <h1>&nbsp;Volsung</h1>
+	  <div class="header_text">&nbsp;&nbsp;&nbsp;
+		A computer language generating and processing audio
+	  </div>
+	  <div>
+		<a href="https://github.com/long-march/Volsung.git">
+		  <img src="github.png" class="header_img" style="float: right;"></img></a>
+	  </div>
+	</div>
+	<br/>
+	<br/>
+	<br/>
+	<div class="row">
+	  <div class="column">
+		<div class="tab">
+		  <button class="tablinks" onclick="select_tab('overview')">Overview</button>
+		  <button class="tablinks" onclick="select_tab('tutorial')">Tutorial</button>
+		</div>
+		<div id="overview" class="tabcontent">
+		  <div class="text"><h2>Overview</h2><h3>Introduction</h3>Volsung is a new language for audio. It can be used for sound synthesis, sound design, digital signal processing, and generative music composition. Aimed at musicians, it is designed to be visual and intuitive, while providing language constructs and abstractions that enable terse and expressive code. Volsung draws inspiration from similar DSP languages such as Miller Puckette's <a href="https://puredata.info">Pure Data</a>, and <a href="https://faust.grame.fr">FAUST</a>, developed at the Générateur de Ressources et d’Activités Musicales Exploratoires (GRAME).
+
+
+			<br/><br/><h3>Data-flow programming</h3>Volsung employs the data-flow programming paradigm. Data-flow programming is based around creating directed mathematical graphs, the verteces of which represent functions, and the edges of which represent data. Each edge holds input parameters of one function and return data of another. The graph is constructed by declaring audio or logic processing devices (also objects), and connecting them using arrow operators. The basic connection operator <code>-></code> connects an output of one object to an input of another. The input and output indeces default to <code>0</code>, and a different input or output can be specified using the vertical bar: <code>osc~ 440 -> 1|output</code>.<br/><br/><h3>Additional Information</h3>It is a neat language that I made and you should use it and make the bleep bloop, thanks.<br/><br/></div></div>
+	  </div>
+	  <div id="tutorial" class="tabcontent">
+		<div class="text">
+		  This is a tutorial for volsungr
+		</div>
+	  </div>
+	  <div class="column"><div class="code" id="code_editor"></div></div>
+	</div>
+	<script src="lib/codemirror.js"></script>
+	<script src="lib/simple.js"></script>
+	<script>
+
+	  CodeMirror.defineSimpleMode("simplemode", {
+		  start: [
+			  { regex: /\;.*/, token: "variable-2" },
+			  { regex: /(<>|>>|=>|->)/, token: "variable" },
+			  { regex: /\b[a-z|A-Z]+~/, token: "keyword" },
+			  { regex: /\b[a-z|A-Z|_]+/, token: "operator" },
+			  { regex: /[0-9]+(\.[0-9]+)?/, token: "atom" }
+		  ]
+	  });
+
+	  var myCodeMirror = CodeMirror(document.getElementById("code_editor"), {
+		  value: "osc~ 440 -> output\n",
+		  theme: "base16-dark",
+		  lineNumbers: true,
+		  mode: "simplemode"
+	  });
+
+	  myCodeMirror.setSize(null, "100%");
+
+	</script>
+
+	<script>
+	  function select_tab(tab_name) {
+		  var tabcontent, tablinks;
+		  tabcontent = document.getElementsByClassName("tabcontent");
+		  for (var n = 0; n < tabcontent.length; n++) {
+			  tabcontent[n].style.display = "none";
+		  }
+		  tablinks = document.getElementsByClassName("tablinks");
+		  for (var n = 0; n < tablinks.length; n++) {
+			  tablinks[n].className = tablinks[n].className.replace(" active", "");
+		  }
+		  document.getElementById(tab_name).style.display = "block";
+		  evt.currentTarget.className += " active";
+	  }
+
+	  select_tab('overview');
+</script>
+  </body>
+</html>

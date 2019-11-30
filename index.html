@@ -33,12 +33,12 @@
   <label for="preset">Choose a preset:</label>
   <select id="preset" onchange="load_preset();">
 	<option value="tone">Tone Generator</option>
-	<option value="pentatonic">Random Pentatonic</option>
-	  <option value="fm">Frequency Modulation</option>
-	  <option value="additive">Additive Synthesis</option>
-	  <option value="thx">Swarm Generator</option>
-	  <option value="empty">Empty</option>
-	</select>
+	<option value="fm">Frequency Modulation</option>
+	<option value="additive">Additive Synthesis</option>
+	<option value="pentatonic">Random Melody</option>
+	<option value="thx">Swarm Generator</option>
+	<option value="empty">Empty</option>
+  </select>
 	<div class="row">
 	  <div class="column"><textarea id="code" spellcheck="false">osc~ 440 -> output</textarea></div>
 	  <div class="column"><textarea id="out" spellcheck="false" style="background-color: #bbbbbb;" disabled=true></textarea></div>
@@ -77,6 +77,7 @@
 	  var source = audio_context.createBufferSource();
 
 	  function parse_code() {
+		  document.getElementById("out").innerHTML = "";
 		  log("========== Running  ==========");
 		  document.getElementById("indicator").innerHTML = "Evaluating...";
 		  document.getElementById("interp").disabled = true;
@@ -230,7 +231,7 @@ gate: [N] mult~
 threshold: [N] comp~ n / 20 / mult
 
 partials => gain => gate >> *0.3 -> output
-timer~ 1 <> threshold => 1|gate
+timer~ <> threshold => 1|gate
 `
 		  }
 		  if (preset == "thx") {
@@ -249,21 +250,12 @@ timer~
 => base_frequency
 => swarm
 >> *0.1 -> output
-
-;  _______ _    _ __   __
-; |__   __| |  | |\\ \\ / /
-;    | |  | |__| | \\ V / 
-;    | |  |  __  |  > <  
-;    | |  | |  | | / . \\ 
-;    |_|  |_|  |_|/_/ \\_\\
-;
 `
 		  }
 		  if (preset == "fm") {
 			  document.getElementById("code").value = `
-; spaaaace
 carrier_f: 220
-ratio: 0.21
+ratio: 0.201
 
 modulator_f: carrier_f * ratio
 index: mult~
@@ -271,7 +263,7 @@ index: mult~
 osc~ modulator_f
 -> index
 -> add~ carrier_f -> osc~
--> output
+-> *0.5 -> output
 
 timer~ -> ^2 -> *100 -> 1|index
 
@@ -280,7 +272,7 @@ timer~ -> ^2 -> *100 -> 1|index
 		}
 	  }
 
-	  </script><script src="a.out.js?version=2">
+	  </script><script src="a.out.js?version=3">
 	  
   </script> </body>
 </html>
