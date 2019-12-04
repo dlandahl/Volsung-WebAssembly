@@ -37,6 +37,7 @@
 	<option value="additive">Additive Synthesis</option>
 	<option value="pentatonic">Random Melody</option>
 	<option value="thx">Swarm Generator</option>
+	<option value="vocoder">Vocoder</option>
 	<option value="empty">Empty</option>
   </select>
 	<div class="row">
@@ -154,18 +155,18 @@
 			  document.getElementById("code").value = `
 &mono 0
 
-; Generate the frequencies of the pentatonic scale
-scale: { 0, 2, 4, 7, 9 }
-root: 440
-freqs: (2^(1/12))^(scale - 5) * root
-
-
 ; Try editing these
 seed: 7
-rate: sf / 3
-length: sf * 10
+rate: 1s / 3
+length: 10s
+root: 440
+
 
 &length length
+
+; Generate the frequencies of the pentatonic scale
+scale: { 0, 2, 4, 7, 9 }
+freqs: (2^(1/12))^(scale - 5) * root
 
 vca: mult~
 clock: add~ 0
@@ -175,7 +176,7 @@ clock~ rate -> ddl~ seed -> clock
 eg: eg~
 clock
 -> eg
--> filter~ 30
+-> pole~ 30
 -> 1|vca
 
 
@@ -184,7 +185,7 @@ snh: snh~
 clock -> 1|snh
 noise~
 -> *0.5 -> +0.5
--> *sf/3 + sf/10
+-> *330ms
 -> snh -> 1|eg
 
 
@@ -203,7 +204,7 @@ noise~ -> index
 
 
 ; Echo circuit
-delay: [2] ddl~ { sf / 2, sf / 1.2 }
+delay: [2] ddl~ { 500ms, 833.33ms }
 feedback: [2] mult~ 0.5
 sound <> delay
 => feedback
@@ -217,7 +218,7 @@ delay[1] -> sat~ -> /3 -> 1|output
 		  }
 		  if (preset == "additive") {
 			  document.getElementById("code").value = `
-&length sf * 2
+&length 2s
 
 ; Try changing this to a 2. You will get a square instead of a saw.
 mult: 1
@@ -236,14 +237,21 @@ timer~ <> threshold => 1|gate
 		  }
 		  if (preset == "thx") {
 			  document.getElementById("code").value = `
-&length sf * 5
+&length 5s
 
+; Use five saw oscillators
 N: 5
 swarm: [N] saw~ 
 
+; For random offset frequencies
 offset: [N] mult~ { r, r, r, r, r } * 100
+
+; The base frequency for each oscillator will
+; be added to the offset
 base_frequency: [N] add~ 55 * (1..N)
 
+; Use a timer~ to decrease the amount of offset over time
+; sat~ is used to stop the timer exceeding 1
 timer~
 -> sat~ -> *-1 -> +1
 <> offset
@@ -254,25 +262,58 @@ timer~
 		  }
 		  if (preset == "fm") {
 			  document.getElementById("code").value = `
+; Specify basic parameters for synthesis
 carrier_f: 220
 ratio: 0.201
 
+; Calculate modulator frequency from carrier and ratio
 modulator_f: carrier_f * ratio
 index: mult~
 
+; Connect everything up
 osc~ modulator_f
 -> index
--> add~ carrier_f -> osc~
+-> add~ carrier_f
+-> osc~
 -> *0.5 -> output
 
+; Have the modulation index increase proportional to
+; the square of the elapsed time
 timer~ -> ^2 -> *100 -> 1|index
 
-&length sf * 5
+&length 5s
 `
-		}
+		  }
+		  if (preset == "vocoder") {
+			  document.getElementById("code").value = `
+N: 12
+modulator: file~ "files/antikythera.raw"
+carrier: [4] saw~ (1..4)*75
+
+
+frequency_bands: (1..N)^2*23 + 30
+
+carrier_bands: [N] bpf~ frequency_bands
+mod_bands: [N] bpf~ frequency_bands
+
+amps: [N] mult~
+followers: [N] env~ 10ms
+
+
+modulator <> mod_bands     => followers => 1|amps
+carrier   x> carrier_bands => amps      >> output
+
+&length 15.7s
+
+
+; Set bandwidth
+const~ 15 <> 2|carrier_bands
+const~ 15 <> 2|mod_bands
+`
+		  }
 	  }
 
-	  </script><script src="a.out.js?version=3">
+	  </script><script src="a.out.js?version=4">
 	  
   </script> </body>
 </html>

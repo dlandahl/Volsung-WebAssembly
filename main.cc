@@ -23,17 +23,21 @@ int main(int argc, char ** argv)
 			set_length($0);
 		}, arguments[0].get_value<float>());
 	});
+
+	Program::add_directive("log", [] (std::vector<TypedValue> arguments, Program*) {
+		Volsung::log(arguments[0].get_value<std::string>());
+	});
+	
 	Program::add_directive("mono", [] (std::vector<TypedValue> arguments, Program*) {
-		if (arguments[0].get_value<float>()) {
-			EM_ASM_({
-				set_mono();
-			});
-		}
-		if (!arguments[0].get_value<float>()) {
-			EM_ASM_({
-				unset_mono();
-			});
-		}
+		EM_ASM_({
+			set_mono();
+		});
+	});
+
+	Program::add_directive("stereo", [] (std::vector<TypedValue> arguments, Program*) {
+		EM_ASM_({
+			unset_mono();
+		});
 	});
 }
 
