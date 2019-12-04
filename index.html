@@ -1,53 +1,223 @@
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <style>
+<html>
+  <head>
+    <title>Volsung Interpreter</title>
+    <meta content="" charset="UTF-8">
 
-	html * {
-		font-size: 1em !important;
-		color: #000 !important;
-		font-family: "Lucida Console", Monaco, monospace
-	}
+	<style>
+	  .code {
+		  resize: none;
+		  width: 100%;
+		  height: 49%;
+		  margin: 0 auto;
+		  outline: 8px solid #333;
+		  box-shadow: 5px 5px 8px #000;
+	  }
+	  
+	  textarea {
+		  outline: 8px solid #333;
+		  box-shadow: 5px 5px 8px #000;
+		  resize: none;
+		  width: 100%;
+		  height: 18%;
+		  background-color: #151515;
+		  font-family: Fira mono;
+	  }
+	  
+	  body {
+		  background-color: #8888a8;
+		  background-image: url('res/Sigurd.svg');
+		  background-repeat: no-repeat;
+		  background-attachment: fixed;
+		  background-position: 50% 50px;
+ 		  font-family: Noto sans;
+		  margin: 0 auto;
+		  padding: 0 auto;
+	  }
+	  
+	  @font-face {
+		  font-family: norse;
+		  src: url(res/Norse.otf);
+	  }
 
-	.column {
-		float: left;
-		width: calc(50% - 20px);
-		padding: 10px;
-	}
+	  .column {
+		  float: left;
+		  width: 45%;
+		  padding: 2.5%;
+		  padding-top: 1%;
+		  position: relative;
+	  }
+	  
+	  .row:after {
+		  content: "";
+		  display: table;
+		  clear: both;
+	  }
 
-	.row:after {
-		content: "";
-		display: table;
-		clear: both;
-	}
-	
-	textarea {
-		resize: none;
-		width: 100%;
-		height: calc(100% - 85px);
-		background-color: #e8e8e8;
-	}
-  </style>
-</head>
-<body>
-  <label for="preset">Choose a preset:</label>
-  <select id="preset" onchange="load_preset();">
-	<option value="tone">Tone Generator</option>
-	<option value="fm">Frequency Modulation</option>
-	<option value="additive">Additive Synthesis</option>
-	<option value="pentatonic">Random Melody</option>
-	<option value="thx">Swarm Generator</option>
-	<option value="vocoder">Vocoder</option>
-	<option value="empty">Empty</option>
-  </select>
-	<div class="row">
-	  <div class="column"><textarea id="code" spellcheck="false">osc~ 440 -> output</textarea></div>
-	  <div class="column"><textarea id="out" spellcheck="false" style="background-color: #bbbbbb;" disabled=true></textarea></div>
+	  h1 {
+		  font-family: norse;
+		  font-size: 530%;
+		  color: #333;
+		  font-weight: 900;
+		  float: left;
+		  margin: 0 auto;
+		  padding: 0 auto;
+	  }
+
+	  h2 {
+		  font-size: 180%;
+	  }
+
+	  .text {
+		  width: 100%;
+		  height: 74%;
+		  margin: 0 auto;
+		  padding: 10px;
+		  border-radius: 10px;
+		  font-size: 100%;
+		  background-color: #ddd;
+		  color: #333;
+		  overflow-y: scroll;
+		  box-shadow: 1px 1px 5px #333;
+		  word-spacing: 4px;
+		  line-height: 24px;
+	  }
+	  
+	  .header {
+		  background-color: #a8a8c8;
+		  width: 100%;
+		  height: 100px;
+		  position: relative;
+		  box-shadow: 0 2px 0 #222;
+ 	  }
+
+	  .header_img {
+		  vertical-align: middle;
+		  height: 40px;
+		  position: relative;
+		  float: right;
+		  top: 0px;
+		  left: -30px;
+		  opacity: 0.8;
+	  }
+
+	  .header_text {
+		  font-family: Noto sans;
+		  font-size: 140%;
+		  position: relative;
+		  color: #222;
+		  top: 55%;
+	  }
+
+	  code {
+		  font-family: Fira mono;
+		  background: #ccc;
+		  border-radius: 3px;
+	  }
+
+	  pre {
+		  font-family: Fira mono;
+		  background: #ddd;
+		  border-radius: 3px;
+		  word-spacing: 0px;
+	  }
+
+	  a {
+		  color: #000;
+	  }
+
+	  .tab button {
+		  background-color: #8888a8;
+		  border: none;
+		  outline: none;
+		  cursor: pointer;
+		  padding: 14px 16px;
+		  font-size: 17px;
+		  float: left;
+ 	  }
+
+	  label {
+		  background-color: #8888a8;
+		  padding: 3px 3px;
+		  color: #111;
+		  font-size: 17px;
+		  float: middle;
+	  }
+
+	  .tablinks {
+		  left: 5%;
+		  position: relative;
+	  }
+
+	</style>
+    <link rel="stylesheet" href="lib/base16-dark.css">
+	<link rel="stylesheet" href="lib/codemirror.css">
+	<link href="https://fonts.googleapis.com/css?family=Fira+Mono&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet"> 
+  </head>
+  <body>
+	<div class="header">
+	  <h1>&nbsp;Volsung</h1>
+	  <div class="header_text">&nbsp;&nbsp;&nbsp;
+		A computer language for generating and processing audio
+	  </div>
+	  <div>
+		<a href="https://github.com/long-march/Volsung.git">
+		  <img src="res/github.png" class="header_img" style="float: right;"></img></a>
+	  </div>
 	</div>
-	<button id="interp" onclick="parse_code()" disabled="true">Interpret</button>
-	<button id="kill" onclick="source.stop()" disabled="true">Stop</button>
-	<label id="indicator">WASM still loading...</label>
+	<div class="row">
+	  <div class="column">
+		<div class="tab">
+		  <button class="tablinks" onclick="select_tab('overview')">Overview</button>
+		  <button class="tablinks" onclick="select_tab('tutorial')">Tutorial</button>
+		</div>
+		<div class="text" id="main_text">
+		</div>
+	  </div>
+	  <div class="column">
+		<label for="preset">Example:</label>
+		<select id="preset" onchange="load_preset();">
+		  <option value="tone">Tone Generator</option>
+		  <option value="fm">Frequency Modulation</option>
+		  <option value="additive">Additive Synthesis</option>
+		  <option value="pentatonic">Random Melody</option>
+		  <option value="thx">Swarm Generator</option>
+		  <option value="vocoder">Vocoder</option>
+		  <option value="empty">Empty</option>
+		</select><br/><br/>
+		<div class="code" id="code_editor"></div>
+		<br/><button id="interp" onclick="parse_code()" disabled="true">Interpret</button>
+		<button id="kill" onclick="source.stop()" disabled="true">Stop</button>
+		<label id="indicator">WASM still loading...</label>
+		<br/><br/><textarea id="out" spellcheck="false" disabled=true></textarea>
+	  </div>
+	</div>
+	<script src="lib/codemirror.js"></script>
+	<script src="lib/simple.js"></script>
 	<script>
+
+	  CodeMirror.defineSimpleMode("simplemode", {
+		  start: [
+			  { regex: /\;.*/, token: "comment" },
+			  { regex: /(<>|>>|x>|=>|->)/, token: "variable" },
+			  { regex: /\w+~/, token: "keyword" },
+			  { regex: /[0-9]+(\.[0-9]+)?/, token: "atom" },
+			  { regex: /".*?("|$)/, token: "string" },
+			  { regex: /'.*?'/, token: "string" },
+			  { regex: /^\&[^ ]+/, token: "variable-2" }
+		  ]
+	  });
+
+	  var myCodeMirror = CodeMirror(document.getElementById("code_editor"), {
+		  value: "osc~ 440 -> output",
+		  theme: "base16-dark",
+		  lineNumbers: true,
+		  mode: "simplemode"
+	  });
+
+	  myCodeMirror.setSize(null, "100%");
+
+
 	  var datal = [ 0 ];
 	  var datar = [ 0 ];
 	  var length = 44100;
@@ -83,13 +253,13 @@
 		  document.getElementById("indicator").innerHTML = "Evaluating...";
 		  document.getElementById("interp").disabled = true;
 		  document.getElementById("kill").disabled = true;
-		  var success = Module.parse(" " + document.getElementById("code").value);
+		  var success = Module.parse(" " + myCodeMirror.getValue());
 		  if (!success) {
 			  document.getElementById("interp").disabled = false;
   			  document.getElementById("kill").disabled = true;
 			  document.getElementById("indicator").innerHTML = "WASM is ready.";
 	  		  log("========== Finished ==========");
-	
+			  
 			  return;
 		  }
 		  log("Parsed successfully");
@@ -140,20 +310,73 @@
 		  }, 100);
 	  }
 
+
+
 	  
+	</script>
+	<script src="a.out.js?version=400000"></script>
+
+	<script>
+	  function select_tab(tab_name) {
+		  var text = document.getElementById("main_text");
+		  if (tab_name == 'tutorial') text.innerHTML = `<h2>Language Tutorial</h2><h3>Declarations</h3>In Volsung, declarations are used to create objects to be used as verteces in the DSP graph, and values which can be used to initialize those objects. A standalone declaration is always an identifier chosen by the user, followed by a colon, followed by the value to be stored with that identifier:
+<pre>id: value</pre>
+In the case of an object declaration, the value is an object literal. An object literal is the type of an object, followed by a tilde, followed by its parameters. Object types are always suffixed with tilde characters <code>~</code>, to separate them from other identifiers. Constants can also be declared, and on the right hand side of a constant declaration should be an expression from which the type and value of the constant can be inferred:
+<pre>frequency: 440\nmy_oscillator: osc~ frequency</pre>
+The above code creates a constant <code>frequency</code> and an oscillator which can later be referred to using its identifier <code>my_oscillator</code>.
+The constant is also used as the first parameter in the object declaration, which is the frequency of the sine oscillator in the case of the <code>osc~</code> type of object. Different object types will process their parameters and input data differently, and produce different output data.
+
+<br/><br/><h3>Expressions and sequences</h3>
+The constant from the above code also has the <code>Number</code> data-type associated with it, as it has been inferred from the expression '<code>440</code>'. The other two currently-available data-types are <code>Text</code> and <code>Sequence</code>. Sequence literals consist of curly braces, encapsulating a list of comma separated expressions which evaluate to Numbers:
+<pre>my_number: 100\nmy_sequence: { 0, my_number, 5/2, 4^(2/3), { 5 }[0] }</pre>
+The final value consists of a sequence of one value, which has been subscripted with zero, extracting the first value (which leaves the number 5). Naturally, the basic arithmetic operators <code>+, -, *, /, ^</code> can be used to perform arithmetic on literals and identifiers of constants, with the expected associativity and precendence.<br/>If a subexpression consisting of an arithmetic operator with a Number operand and a Sequence operand is evaluated, the resulting type is a Sequence, with the arithmetic operation performed on each of its values. Arithmetic sequences (those with a constant difference between consecutive terms) can also be created using shorthand sequence generators, with the following syntax: <code>start_value..end_value|step_size</code>. The vertical bar - step_size are optional, and the common difference will default to one:
+<pre>; Results in { 1, 4, 9, 16 }\nsquares: (1..4)^2</pre>
+Note that without the parentheses, the exponentiation would take precendence over the sequence generation operator, resulting in a sequence with the numbers 1 through 16. Also notice that both start and end values are inclusive.
+
+<br/><br/><h3>Connections</h3>
+Once several objects have been created, they can be connected together to form a graph. The basic connection operator <code>-></code> connects two objects together. In the following example, a sine wave signal is generated, attenuated by a factor of 0.5 (6 decibels) and the data is written to a file on disk:
+<pre>source: osc~ 440\ndisk: file~ "output.raw"\ngain: mult~ 0.5\nsource -> gain -> disk</pre>
+Be aware that the file~ object is currently not functional in the browser-based interpreter, since WebAssembly is not allowed to access your file system.<br/>Instead of declaring every individual object, objects can also be created inline, within a connection statement using just object literals. These objects will be anonymous, and cannot be referred to again later in the program:
+<pre>osc~ 440 -> *0.5 -> file~ "output.raw"</pre>
+This style of programming is also less descriptive, as objects do not have names describing their role in the processing graph. Notice the use of an asterisk as a shorthand for a <code>mult~</code> object. Basic arithmetic objects can be created inline using arithmetic operators as a shorthand. The code above multiplies a signal by a constant. In order to multiply two signals (performing ring modulation), we need to supply a second input signal to the <code>mult~</code> object. Using the second input port of the <code>mult~</code> object overrides the constant parameter provided as a multiplier, and we won't provide one for this reason. To specify which input or output port on an object a connection should go to and from, use an integral index and a vertical bar:
+<pre>ringmod: mult~\n\nosc~ 300 -> ringmod\nosc~ 50 -> 1|ringmod -> output</pre>
+Input port and output port indeces default to 0. Therefore, all the programs we have written before just use the input and output port 0 on all connections. 
+<pre>; These two lines of code are equivalent\nsource   -> gain     -> disk\nsource|0 -> 0|gain|0 -> 0|disk</pre>
+Also notice the use of the <code>output</code> object, without it having been declared. This is an ambient object which is created before the main code is interpreted. Which ambient objects are available depends on the front-end environment the language is running in and also your hardware configuration. A language front-end, such as a VST plugin or standalone software, should normally be implemented such that there is one input port on the output object for each audio output channel that is available.
+`;
+
+
+		  
+		  if (tab_name == 'overview') text.innerHTML = `<h2>Overview</h2><h3>Introduction</h3>Volsung is a new language for audio, currently in early development. It can be used for sound synthesis, sound design, digital signal processing, and generative music composition. Aimed at musicians, it is designed to be visual and intuitive, while providing language constructs and abstractions that enable terse and expressive code. Volsung draws inspiration from similar DSP languages such as Miller Puckette's <a href="https://puredata.info">Pure Data</a>, Standford's <a href="http://chuck.stanford.edu">ChucK</a>, and <a href="https://faust.grame.fr">FAUST</a>, developed at the Générateur de Ressources et d’Activités Musicales Exploratoires (GRAME).
+
+
+			<br/><br/><h3>Data-flow programming</h3>Volsung employs the data-flow programming paradigm. Data-flow programming is based around creating directed mathematical graphs, the verteces of which represent procedures, and the edges of which represent data. Each edge holds input parameters of one procedure and return data of another. The graph is constructed by declaring audio or logic processing devices (also objects), and connecting them using arrow operators. The basic connection operator <code>-></code> connects an output port on one object to an input port on another. Data-flow systems are reminiscent of things like guitar pedal-boards and modular synthesizers, and are already familiar for most creative pracitioners in the field of audio.<br/><br/>`;
+	  }
+
+	  select_tab('overview');
+
+
+
+
+
+
+
+
+
+
+
 	  function load_preset() {
-		  console.log("Loading Preset");
-		  var preset = document.getElementById("preset").value
+		  var preset = document.getElementById("preset").value;
 		  
 		  if (preset == "empty") {
-			  document.getElementById("code").value = ""
+			  myCodeMirror.setValue("");
 		  }
 		  if (preset == "tone") {
-			  document.getElementById("code").value = "osc~ 440 -> output"
+			  myCodeMirror.setValue("\nosc~ 440 -> output\n");
 		  }
 		  if (preset == "pentatonic") {
-			  document.getElementById("code").value = `
-&mono 0
+			  myCodeMirror.setValue(`
+&stereo
 
 ; Try editing these
 seed: 7
@@ -214,10 +437,10 @@ sound <> delay
 ; Saturate and output
 delay[0] -> sat~ -> /3 -> 0|output
 delay[1] -> sat~ -> /3 -> 1|output
-`;
+`);
 		  }
 		  if (preset == "additive") {
-			  document.getElementById("code").value = `
+			  myCodeMirror.setValue(`
 &length 2s
 
 ; Try changing this to a 2. You will get a square instead of a saw.
@@ -233,10 +456,10 @@ threshold: [N] comp~ n / 20 / mult
 
 partials => gain => gate >> *0.3 -> output
 timer~ <> threshold => 1|gate
-`
+`);
 		  }
 		  if (preset == "thx") {
-			  document.getElementById("code").value = `
+			  myCodeMirror.setValue(`
 &length 5s
 
 ; Use five saw oscillators
@@ -258,10 +481,10 @@ timer~
 => base_frequency
 => swarm
 >> *0.1 -> output
-`
+`);
 		  }
 		  if (preset == "fm") {
-			  document.getElementById("code").value = `
+			  myCodeMirror.setValue(`
 ; Specify basic parameters for synthesis
 carrier_f: 220
 ratio: 0.201
@@ -282,10 +505,10 @@ osc~ modulator_f
 timer~ -> ^2 -> *100 -> 1|index
 
 &length 5s
-`
+`);
 		  }
 		  if (preset == "vocoder") {
-			  document.getElementById("code").value = `
+			  myCodeMirror.setValue(`
 N: 12
 modulator: file~ "files/antikythera.raw"
 carrier: [4] saw~ (1..4)*75
@@ -309,13 +532,53 @@ carrier   x> carrier_bands => amps      >> output
 ; Set bandwidth
 const~ 15 <> 2|carrier_bands
 const~ 15 <> 2|mod_bands
-`
+`);
+		  }
+		  if (preset == "vocoder") {
+			  myCodeMirror.setValue(`
+; Number of bands
+N: 12
+
+; Acquire carrier and modulator pcm data
+mod_data_path: "files/speech"
+carrier: [4] saw~ (1..4)*75
+
+; Calculate positions for frequency bands in the spectrum
+frequency_bands: (1..N)^2*23 + 30
+
+; Declare bandpass filter banks for carrier and modulator
+carrier_bands: [N] bpf~ frequency_bands
+mod_bands: [N] bpf~ frequency_bands
+
+; Envelope followers applied to the modulator signal bands determine
+; the gain applied to the carrier signal bands
+amps: [N] mult~
+followers: [N] env~ 10ms
+
+; Connect them up
+file~ mod_data_path <> mod_bands     => followers => 1|amps
+carrier             x> carrier_bands => amps      >> output
+
+; Length of audio to be generated is length of the speech sample
+&length 14.5s
+
+; Set bandwidth (fix me any day now)
+const~ 15 <> 2|carrier_bands
+const~ 15 <> 2|mod_bands
+`);
 		  }
 	  }
 
-	  </script><script src="a.out.js?version=4">
-	  
-  </script> </body>
+	  load_preset("tone");
+	  </script>
+  </body>
 </html>
+
+
+
+
+
+
+
 
 

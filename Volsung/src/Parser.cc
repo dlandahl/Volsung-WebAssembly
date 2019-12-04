@@ -390,12 +390,14 @@ void Parser::parse_directive()
 	expect(identifier);
 	std::string directive = current.value;
 	std::vector<TypedValue> arguments;
-	next_token();
-	arguments.push_back(parse_expression());
-	while (peek(comma)) {
-		expect(comma);
+	if (!peek(newline) && !peek(eof)) {
 		next_token();
 		arguments.push_back(parse_expression());
+		while (peek(comma)) {
+			expect(comma);
+			next_token();
+			arguments.push_back(parse_expression());
+		}
 	}
 	program->invoke_directive(directive, arguments);
 }
