@@ -2,7 +2,6 @@
   <head>
     <title>Volsung Interpreter</title>
     <meta content="" charset="UTF-8">
-
 	<style>
 	  .code {
 		  resize: none;
@@ -11,6 +10,7 @@
 		  margin: 0 auto;
 		  outline: 8px solid #333;
 		  box-shadow: 5px 5px 8px #000;
+		  font-size: 100% !important;
 	  }
 	  
 	  textarea {
@@ -21,6 +21,7 @@
 		  height: 18%;
 		  background-color: #151515;
 		  font-family: Fira mono;
+		  font-size: 100% !important;
 	  }
 	  
 	  body {
@@ -221,7 +222,7 @@
 	  var datal = [ 0 ];
 	  var datar = [ 0 ];
 	  var length = 44100;
-	  
+
 	  var mono = true;
 	  function set_mono() { mono = true; }
 	  function unset_mono() { mono = false; }
@@ -343,15 +344,30 @@ This style of programming is also less descriptive, as objects do not have names
 Input port and output port indeces default to 0. Therefore, all the programs we have written before just use the input and output port 0 on all connections. 
 <pre>; These two lines of code are equivalent\nsource   -> gain     -> disk\nsource|0 -> 0|gain|0 -> 0|disk</pre>
 Also notice the use of the <code>output</code> object, without it having been declared. This is an ambient object which is created before the main code is interpreted. Which ambient objects are available depends on the front-end environment the language is running in and also your hardware configuration. A language front-end, such as a VST plugin or standalone software, should normally be implemented such that there is one input port on the output object for each audio output channel that is available.
+
+<br/><br/><h3>Groups</h3>
+A Group in Volsung is an abstraction that allows you to declare many objects of the same type and address them as one object. They can also be indexed, and are slightly analogous to arrays in many high level general purpose languages. Here is the basic syntax for group declarations:
+<pre>identifier: [5] type~ parameter</pre>
+This creates five objects of type <code>type</code>. A provided number parameter will be used as a parameter for each object. If a sequence parameter is provided instead, it should be the same length as the number of objects in the group, and the <code>nth</code> value in the sequence will be used to initialize the <code>nth</code> object. One way to address and connect these objects in the group is to subscript the group:
+<pre>bank: [5] osc~ 440\nbank[0] -> output</pre>
+However, the true usefulness comes from being able to connect them up in one go. In order to allow terse connection statements involving entire groups, a few new explicit arrow operators are introduced:
+<pre>a >> b ; Many-to-one
+a => b ; Many-to-many (parallel)
+a <> b ; One-to-many
+a x> b ; Complete bipartite connection
+</pre>
 `;
 
 
 		  
-		  if (tab_name == 'overview') text.innerHTML = `<h2>Overview</h2><h3>Introduction</h3>Volsung is a new language for audio, currently in early development. It can be used for sound synthesis, sound design, digital signal processing, and generative music composition. Aimed at musicians, it is designed to be visual and intuitive, while providing language constructs and abstractions that enable terse and expressive code. Volsung draws inspiration from similar DSP languages such as Miller Puckette's <a href="https://puredata.info">Pure Data</a>, Standford's <a href="http://chuck.stanford.edu">ChucK</a>, and <a href="https://faust.grame.fr">FAUST</a>, developed at the Générateur de Ressources et d’Activités Musicales Exploratoires (GRAME).
+		  if (tab_name == 'overview') text.innerHTML = `<h2>Overview</h2><h3>Introduction</h3>Volsung is a new language for audio, currently in early development. It can be used for sound synthesis, audio effect processing, and generative music composition. Aimed at musicians, it is designed to be visual and intuitive, while providing language constructs and abstractions that enable terse and expressive code. Volsung draws inspiration from similar DSP languages such as Miller Puckette's <a href="https://puredata.info">Pure Data</a>, Standford's <a href="http://chuck.stanford.edu">ChucK</a>, and <a href="https://faust.grame.fr">FAUST</a>, developed at the Générateur de Ressources et d’Activités Musicales Exploratoires (GRAME).
 
 
-			<br/><br/><h3>Data-flow programming</h3>Volsung employs the data-flow programming paradigm. Data-flow programming is based around creating directed mathematical graphs, the verteces of which represent procedures, and the edges of which represent data. Each edge holds input parameters of one procedure and return data of another. The graph is constructed by declaring audio or logic processing devices (also objects), and connecting them using arrow operators. The basic connection operator <code>-></code> connects an output port on one object to an input port on another. Data-flow systems are reminiscent of things like guitar pedal-boards and modular synthesizers, and are already familiar for most creative pracitioners in the field of audio.<br/><br/>`;
-	  }
+			<br/><br/><h3>Data-flow programming</h3>Volsung employs the data-flow programming paradigm. Data-flow programming is based around creating directed mathematical graphs, the verteces of which represent procedures, and the edges of which represent data. Each edge holds input parameters of one procedure and return data of another. The graph is constructed by declaring audio or logic processing devices (also objects), and connecting them using arrow operators. The basic connection operator <code>-></code> connects an output port on one object to an input port on another. Data-flow systems are reminiscent of things like guitar pedal-boards and modular synthesizers, and are already familiar for most creative pracitioners in the field of audio.
+
+
+	  			<br/><br/><h3>Front-ends</h3>The language can currently be accessed through compiling the source code into a minimal front-end, or through the WebAssembly web-interpreter to the right of this page. Deployment through a wide range of existing technologies is planned, including Steinberg VST, VCVRack module, Unity3D plugin, Audiokinetic Wwise plugin, and Eurorack hardware.<br/><br/>`;
+}
 
 	  select_tab('overview');
 
@@ -491,8 +507,8 @@ ratio: 0.201
 
 ; Calculate modulator frequency from carrier and ratio
 modulator_f: carrier_f * ratio
-index: mult~
 
+index: mult~
 ; Connect everything up
 osc~ modulator_f
 -> index
@@ -539,8 +555,8 @@ const~ 15 <> 2|mod_bands
 ; Number of bands
 N: 12
 
-; Acquire carrier and modulator pcm data
-mod_data_path: "files/speech"
+; Acquire carrier and modulator signals
+modulator: file~ "files/speech"
 carrier: [4] saw~ (1..4)*75
 
 ; Calculate positions for frequency bands in the spectrum
@@ -556,8 +572,8 @@ amps: [N] mult~
 followers: [N] env~ 10ms
 
 ; Connect them up
-file~ mod_data_path <> mod_bands     => followers => 1|amps
-carrier             x> carrier_bands => amps      >> output
+modulator <> mod_bands     => followers => 1|amps
+carrier   x> carrier_bands => amps      >> output
 
 ; Length of audio to be generated is length of the speech sample
 &length 14.5s
