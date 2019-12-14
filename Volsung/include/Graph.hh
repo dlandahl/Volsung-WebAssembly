@@ -6,6 +6,7 @@
 #include <istream>
 #include <any>
 #include <random>
+#include <chrono>
 
 #include "Volsung.hh"
 
@@ -17,7 +18,7 @@ using callback_functor = std::function<void(buf&, buf&, std::any)>;
 enum class Type {
 	number,
 	sequence,
-	string
+	text
 };
 
 enum class ConnectionType {
@@ -31,10 +32,21 @@ enum class ConnectionType {
 struct Sequence
 {
 	std::vector<float> data;
-	int size() { return data.size(); }
+	std::size_t size() { return data.size(); }
+	
+	operator std::string() {
+		std::string string = "{ ";
+		string += std::to_string(data[0]);
+		for (std::size_t n = 1; n < size(); n++) string += ", " + std::to_string(data[n]);
+		string += " }\n";
+		return string;
+	}
 };
 
-using TypedValueBase = std::variant<float, std::string, Sequence>;
+using Number = float;
+using Text = std::string;
+
+using TypedValueBase = std::variant<Number, Text, Sequence>;
 class TypedValue : private TypedValueBase
 {
 	using TypedValueBase::TypedValueBase;
@@ -69,6 +81,11 @@ template<>
 inline std::string type_debug_name<std::string>() { return "Text"; }
 
 using directive_functor = std::function<void(std::vector<TypedValue>, Program*)>;
+using SubgraphRepresentation = std::pair<std::string, std::array<float, 2>>;
+
+template <class T>
+using SymbolTable = std::unordered_map<std::string, T>;
+using Frame = std::vector<float>;
 
 /*! \brief An instance of a Volsung program
  *  
@@ -79,19 +96,21 @@ using directive_functor = std::function<void(std::vector<TypedValue>, Program*)>
 
 class Program
 {
-	static inline std::map<std::string, directive_functor> custom_directives;
+	static inline SymbolTable<directive_functor> custom_directives;
 
 	uint inputs = 0;
 	uint outputs = 0;
-	std::unordered_map<std::string, std::unique_ptr<AudioObject>> table;
-	std::unordered_map<std::string, TypedValue> symbol_table;
+	SymbolTable<std::unique_ptr<AudioObject>> table;
+	SymbolTable<TypedValue> symbol_table;
 
 	std::uniform_real_distribution<float> distribution;
 	std::default_random_engine generator;
 
 public:
-	std::unordered_map<std::string, int> group_sizes;
-
+	SymbolTable<std::size_t> group_sizes;
+	SymbolTable<SubgraphRepresentation> subgraphs;
+	Program* parent = nullptr;
+	
 	/*! \brief Used to create audio objects manually
 	 *  
 	 *  This template can be used to inject audio objects into the symbol table without
@@ -152,9 +171,12 @@ public:
 	 *  Runs the program by running each audio object (unit generator) in the symbol table in turn.
 	 *  Expects a sample which will be written to the "input" object, and returns a float sample from the "output" object, created by configure_io.
 	 */
-
+	bool object_exists(std::string);
+	void expect_to_be_object(std::string);
+	void expect_to_be_group(std::string);
+	
 	float run(float);
-	std::vector<float> run(std::vector<float>);
+	Frame run(Frame);
 	void finish();
 	void reset();
 	
@@ -169,10 +191,11 @@ public:
 	
 	TypedValue get_symbol_value(std::string);
 	void add_symbol(std::string, TypedValue);
+	void remove_symbol(std::string);
 	bool symbol_exists(std::string);
 
 	Program() :
-		distribution(-1.0f, 1.0f)
+		distribution(0.f, 1.f), generator(std::chrono::system_clock::now().time_since_epoch().count())
 	{ }
 };
 

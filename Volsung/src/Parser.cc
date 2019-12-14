@@ -56,7 +56,7 @@ Token Lexer::get_next_token()
 		position--;
 		return { dot, "" };
 	}
-	
+
 	if (current() == '{') return { open_brace, "" };
 	if (current() == '}') return { close_brace, "" };
 	if (current() == '(') return { open_paren, "" };
@@ -139,7 +139,14 @@ bool Lexer::peek(TokenType expected)
 	return ret;
 }
 
-Lexer::~Lexer() {};
+bool Lexer::peek_expression()
+{
+return peek(numeric_literal) || peek(minus)
+    || peek(string_literal) || peek(open_brace)
+    || peek(open_paren) || peek(identifier);
+}
+
+Lexer::~Lexer() {}
 
 
 
@@ -147,35 +154,35 @@ Lexer::~Lexer() {};
 bool Parser::parse_program(Graph& graph)
 {
 	program = &graph;
-	program->reset();
 	program->add_symbol("sf", sample_rate);
 	program->add_symbol("tau", TAU);
 	try {
 
 	while (true) {
 		while (peek(newline)) next_token();
-		if (peek(eof)) break;
+		if (peek(eof) || (program->parent && peek(close_brace))) break;
 		if (peek(identifier)) {
 			next_token();
 			if (peek(colon)) parse_declaration();
 			else if (peek(vertical_bar) || peek(arrow) || peek(newline) ||
 			         peek(many_to_one) || peek(one_to_many) || peek(parallel)
 					 || peek(open_bracket) || peek(cross_connection)) parse_connection();
+			else if (peek(open_paren)) {
+				parse_subgraph_declaration();
+			}
 			else {
 				next_token();
-				error("Expected colon or connection operator, got " + debug_names[current.type]);
+				error("Expected colon or connection operator, got " + debug_names.at(current.type));
 			}
 		}
-		else if (peek(object)) {
+		else if (peek(object) || peek(open_bracket)) {
 			next_token();
 			parse_connection();
 		}
-		else if (peek(ampersand)) {
-			parse_directive();
-		}
+		else if (peek(ampersand)) parse_directive();
 		else {
 			next_token();
-			error("Expected declaration or connection, got " + debug_names[current.type]);
+			error("Expected declaration or connection, got " + debug_names.at(current.type));
 		}
 	}
 
@@ -191,73 +198,92 @@ void Parser::parse_declaration()
 {
 	std::string name = current.value;
 	expect(colon);
-	if (peek(numeric_literal)
-		|| peek(minus)
-		|| peek(string_literal)
-		|| peek(open_brace)
-		|| peek(open_paren)
-		|| peek(identifier)) {
+	if (peek_expression()) {
 		next_token();
 		TypedValue value = parse_expression();
 		program->add_symbol(name, value);
-		return;
-
 	}
-	else if (peek(open_bracket)) {
-		expect(open_bracket);
+	else {
 		next_token();
-		int count = (int) parse_expression().get_value<float>();
+		parse_object_declaration(name);
+	}
+}
+
+std::string Parser::parse_object_declaration(std::string name)
+{
+	if (name == "") name = "Unnamed Object " + std::to_string(inline_object_index++);
+	bool is_group = false;
+	int count = 1;
+	if (current.type == open_bracket) {
+		is_group = true;
+		next_token();
+		count = (int) parse_expression().get_value<Number>();
 		expect(close_bracket);
-
-		expect(object);
-		std::string object_type = current.value;
-
-		if (!peek(newline)) {
-			next_token();
-			Sequence parameters;
-			TypedValue param = parse_expression();
-			if (param.is_type<Sequence>()) parameters = param.get_value<Sequence>();
-			else for (uint n = 0; n < count; n++) {
-				parameters.data.push_back(param.get_value<float>());
-			}
-			if (parameters.size() != count) error("Sequence initialising group is not the same size as the group");
-
-			for (uint n = 0; n < count; n++)
-				make_object(object_type, "__grp_" + name + std::to_string(n), { TypedValue(parameters.data[n]) });
-		}
-		else {
-			for (uint n = 0; n < count; n++)
-				make_object(object_type, "__grp_" + name + std::to_string(n), { });
-		}
-
-		program->group_sizes[name] = count;
-		return;
-		
-	}
-	else if (!peek(object)) {
 		next_token();
-		error("RHS of declaration is " + debug_names[current.type] + ", should be string, object, or expression.");
-		return;
 	}
-	
-	expect(object);
+
+	verify(object);
 	std::string object_type = current.value;
 
-	std::vector<TypedValue> arguments;
-	next_token();
-	if (!line_end()) {
-		arguments.push_back(parse_expression());
-	}
+	if (is_group) {
+		int old_position = position;
 
-	make_object(object_type, name, arguments);
+		bool n_existed = false;
+		TypedValue old_n;
+		if (program->symbol_exists("n")) {
+			old_n = program->get_symbol_value("n");
+			n_existed = true;
+		}
+
+		for (int n = 0; n < count; n++) {
+			position = old_position;
+
+			program->remove_symbol("n");
+			program->add_symbol("n", n+1);
+
+			std::vector<TypedValue> arguments = { };
+			if (peek_expression()) {
+				next_token();
+				arguments.push_back(parse_expression());
+			}
+
+			while (peek(comma)) {
+				expect(comma);
+				next_token();
+				arguments.push_back(parse_expression());
+			}
+
+			make_object(object_type, "__grp_" + name + std::to_string(n), arguments);
+			program->remove_symbol("n");
+		}
+		program->group_sizes[name] = count;
+		if (n_existed) program->add_symbol("n", old_n);
+	}
+	else {
+		if (program->group_sizes.count(name)) error("Object " + name + " already exists as group");
+		std::vector<TypedValue> arguments = { };
+		if (peek_expression()) {
+			next_token();
+			arguments.push_back(parse_expression());
+		}
+
+		while (peek(comma)) {
+			expect(comma);
+			next_token();
+			arguments.push_back(parse_expression());
+		}
+
+		make_object(object_type, name, arguments);
+	}
+	return name;
 }
 
 void Parser::make_object(std::string object_type, std::string object_name, std::vector<TypedValue> arguments)
 {
 	if (object_type == "osc") program->create_object<OscillatorObject>(object_name, arguments);
 	else if (object_type == "add")   program->create_object<AddObject>(object_name, arguments);
-	else if (object_type == "sqr")program->create_object<SquareObject>(object_name, arguments);
-	else if (object_type == "ddl") program->create_object<DelayObject>(object_name, arguments);
+	else if (object_type == "sqr")   program->create_object<SquareObject>(object_name, arguments);
+	else if (object_type == "ddl")   program->create_object<DelayObject>(object_name, arguments);
 	else if (object_type == "mult")  program->create_object<MultObject>(object_name, arguments);
 	else if (object_type == "sub")   program->create_object<SubtractionObject>(object_name, arguments);
 	else if (object_type == "div")   program->create_object<DivisionObject>(object_name, arguments);
@@ -269,20 +295,42 @@ void Parser::make_object(std::string object_type, std::string object_name, std::
 	else if (object_type == "mod")   program->create_object<ModuloObject>(object_name, arguments);
 	else if (object_type == "abs")   program->create_object<AbsoluteValueObject>(object_name, arguments);
 	else if (object_type == "comp")  program->create_object<ComparatorObject>(object_name, arguments);
-	else if (object_type == "pole")program->create_object<FilterObject>(object_name, arguments);
+	else if (object_type == "pole")  program->create_object<FilterObject>(object_name, arguments);
 	else if (object_type == "file")  program->create_object<FileoutObject>(object_name, arguments);
 	else if (object_type == "step")  program->create_object<StepSequence>(object_name, arguments);
-	else if (object_type == "int")  program->create_object<RoundObject>(object_name, arguments);
-	else if (object_type == "seq")program->create_object<SequenceObject>(object_name, arguments);
-	else if (object_type == "snh")  program->create_object<SampleAndHoldObject>(object_name, arguments);
-	else if (object_type == "eg")  program->create_object<EnvelopeObject>(object_name, arguments);
-	else if (object_type == "const")  program->create_object<ConstObject>(object_name, arguments);
-	else if (object_type == "saw")  program->create_object<SawObject>(object_name, arguments);
-	else if (object_type == "tri")  program->create_object<TriangleObject>(object_name, arguments);
-	else if (object_type == "lpf")  program->create_object<LowpassObject>(object_name, arguments);
-	else if (object_type == "hpf")  program->create_object<HighpassObject>(object_name, arguments);
-	else if (object_type == "bpf")  program->create_object<BandpassObject>(object_name, arguments);
-	else if (object_type == "env")  program->create_object<EnvelopeFollowerObject>(object_name, arguments);
+	else if (object_type == "int")   program->create_object<RoundObject>(object_name, arguments);
+	else if (object_type == "seq")   program->create_object<SequenceObject>(object_name, arguments);
+	else if (object_type == "snh")   program->create_object<SampleAndHoldObject>(object_name, arguments);
+	else if (object_type == "eg")    program->create_object<EnvelopeObject>(object_name, arguments);
+	else if (object_type == "const") program->create_object<ConstObject>(object_name, arguments);
+	else if (object_type == "saw")   program->create_object<SawObject>(object_name, arguments);
+	else if (object_type == "tri")   program->create_object<TriangleObject>(object_name, arguments);
+	else if (object_type == "lpf")   program->create_object<LowpassObject>(object_name, arguments);
+	else if (object_type == "hpf")   program->create_object<HighpassObject>(object_name, arguments);
+	else if (object_type == "bpf")   program->create_object<BandpassObject>(object_name, arguments);
+	else if (object_type == "apf")   program->create_object<BandpassObject>(object_name, arguments);
+	else if (object_type == "env")   program->create_object<EnvelopeFollowerObject>(object_name, arguments);
+	else if (program->subgraphs.count(object_type)) {
+		auto io = program->subgraphs[object_type].second;
+		arguments.insert(arguments.begin(), TypedValue { (Number) io[0] });
+		arguments.insert(arguments.begin() + 1, TypedValue { (Number) io[1] });
+
+		program->create_object<SubgraphObject>(object_name, arguments);
+
+		program->get_audio_object_raw_pointer<SubgraphObject>(object_name)->graph = std::make_unique<Program>();
+		Program* other_program = program->get_audio_object_raw_pointer<SubgraphObject>(object_name)->graph.get();
+
+		Parser subgraph_parser;
+		subgraph_parser.source_code = program->subgraphs[object_type].first;
+		other_program->parent = program;
+		other_program->configure_io(io[0], io[1]);
+		other_program->reset();
+
+		for (uint n = 2; n < arguments.size(); n++)
+			other_program->add_symbol("_" + std::to_string(n-1), arguments[n]);
+
+		if (!subgraph_parser.parse_program(*other_program)) error("Subgraph failed to parse");
+	}
 	else error("No such object type: " + object_type);
 }
 
@@ -292,12 +340,13 @@ void Parser::parse_connection()
 	std::string output_object = get_object_to_connect(), input_object;;
 	int output_index = 0, input_index = 0;
 	ConnectionType connection_type;
+	
 	if (peek(vertical_bar)) {
 		expect(vertical_bar);
 		expect(numeric_literal);
 		output_index = std::stoi(current.value);
 	} else (output_index = 0);
-	
+
 	while (peek(newline)) next_token();
 	do {
 		next_token();
@@ -307,7 +356,7 @@ void Parser::parse_connection()
 		else if (current.type == parallel) connection_type = ConnectionType::many_to_many;
 		else if (current.type == cross_connection) connection_type = ConnectionType::cross;
 		else error("Expected connection operator");
-		
+
 		if (peek(numeric_literal)) {
 			expect(numeric_literal);
 			input_index = std::stoi(current.value);
@@ -330,7 +379,7 @@ void Parser::parse_connection()
 	} while (peek(arrow) || peek(many_to_one) || peek(one_to_many) || peek(parallel));
 	if (!got_newline) {
 		next_token();
-		Volsung::assert(line_end(), "Expected newline or connection operator, got " + debug_names[current.type]);
+		Volsung::assert(line_end(), "Expected newline or connection operator, got " + debug_names.at(current.type));
 	}
 }
 
@@ -338,21 +387,17 @@ std::string Parser::get_object_to_connect()
 {
 	std::string output;
 
-	if (current.type == object ||
-	    current.type == plus ||
+	if (current.type == plus ||
 		current.type == minus ||
 		current.type == asterisk ||
 		current.type == slash ||
 		current.type == caret) {
 
 		Token operation = current;
-		std::vector<TypedValue> argument = {0};
-		if (!(peek(arrow) || peek(newline) || peek(one_to_many) || peek(many_to_one) || peek(parallel))) {
-			next_token();
-			argument = { parse_expression() };
-		}
+		next_token();
+		std::vector<TypedValue> argument = { parse_expression() };
 
-		output = "__inline_object" + std::to_string(inline_object_index++);
+		output = "Unnamed Object " + std::to_string(inline_object_index++);
 
 		if (operation.type != object) {
 			switch (operation.type) {
@@ -361,7 +406,7 @@ std::string Parser::get_object_to_connect()
 				case (asterisk): program->create_object<MultObject>(output, argument); break;
 				case (slash):    program->create_object<DivisionObject>(output, argument); break;
 				case (caret):    program->create_object<PowerObject>(output, argument); break;
-				default: error("Invalid token for inline operation: " + debug_names[operation.type] + ". Expected arithmetic operator");
+				default: error("Invalid token for inline operation: " + debug_names.at(operation.type) + ". Expected arithmetic operator");
 			}
 		} else {
 			make_object(operation.value, output, argument);
@@ -377,8 +422,11 @@ std::string Parser::get_object_to_connect()
 			output = "__grp_" + output + std::to_string(index);
 		}
 	}
+	else if (current.type == object || current.type == open_bracket) {
+			output = parse_object_declaration();
+	}
 	else {
-		error("Expected inline object declaration or identifier, got " + debug_names[current.type]);
+		error("Expected inline object declaration or identifier, got " + debug_names.at(current.type));
 	}
 
 	return output;
@@ -390,9 +438,11 @@ void Parser::parse_directive()
 	expect(identifier);
 	std::string directive = current.value;
 	std::vector<TypedValue> arguments;
-	if (!peek(newline) && !peek(eof)) {
+
+	if (!peek(newline)) {
 		next_token();
 		arguments.push_back(parse_expression());
+		
 		while (peek(comma)) {
 			expect(comma);
 			next_token();
@@ -400,6 +450,38 @@ void Parser::parse_directive()
 		}
 	}
 	program->invoke_directive(directive, arguments);
+}
+
+void Parser::parse_subgraph_declaration()
+{
+	std::string name = current.value;
+
+	expect(open_paren);
+	next_token();
+	float inputs = parse_expression().get_value<Number>();
+	expect(comma);
+	next_token();
+	float outputs = parse_expression().get_value<Number>();
+	expect(close_paren);
+	expect(colon);
+	expect(open_brace);
+
+	int start_position = position;
+	int num_braces_encountered = 0;
+
+	while (true) {
+		position++;
+		if (source_code[position] == '}') {
+			if (!num_braces_encountered) break;
+			num_braces_encountered--;
+		}
+		if (source_code[position] == '\n') line++;
+		if (source_code[position] == '{') num_braces_encountered++;
+	}
+	
+	position--;
+	program->subgraphs[name] = { source_code.substr(start_position, position - start_position), { inputs, outputs } };
+	expect(close_brace);
 }
 
 TypedValue Parser::parse_expression()
@@ -466,7 +548,7 @@ TypedValue Parser::parse_factor()
 		next_token();
 		value = -parse_product();
 	}
-	else error("Couldn't get value of expression factor of type " + debug_names[current.type]);
+	else error("Couldn't get value of expression factor of type " + debug_names.at(current.type));
 
 	if (peek(open_bracket)) {
 		expect(open_bracket);
@@ -476,12 +558,13 @@ TypedValue Parser::parse_factor()
 		TypedValue index = parse_expression();
 		expect(close_bracket);
 
-		if (index.is_type<float>()) {
-			value = value.get_value<Sequence>().data[(int)index.get_value<float>()];
+		if (index.is_type<Number>()) {
+			value = value.get_value<Sequence>().data[(int) index.get_value<Number>()];
 		} else if (index.is_type<Sequence>()) {
 			Sequence s;
 			Sequence& index_sequence = index.get_value<Sequence>();
 			Sequence& value_sequence = value.get_value<Sequence>();
+
 			for (uint n = 0; n < index_sequence.size(); n++)
 				s.data.push_back(value_sequence.data[index_sequence.data[n]]);
 
@@ -490,18 +573,19 @@ TypedValue Parser::parse_factor()
 	}
 
 	if (peek(elipsis)) {
-		float const lower = value.get_value<float>();
+		float const lower = value.get_value<Number>();
 		expect(elipsis);
 		next_token();
-		float const upper = parse_expression().get_value<float>();
+		float const upper = parse_expression().get_value<Number>();
 		float step = 1;
 		if (peek(vertical_bar)) {
 			next_token();
 			next_token();
-			step = parse_expression().get_value<float>();
+			step = parse_expression().get_value<Number>();
 		}
 		Sequence s;
-		for (float n = lower; n <= upper; n += step) s.data.push_back(n);
+		if (lower > upper) for (float n = lower; n >= upper; n -= step) s.data.push_back(n);
+		else for (float n = lower; n <= upper; n += step) s.data.push_back(n);
 		value = s;
 	}
 	return value;
@@ -523,7 +607,8 @@ float Parser::parse_number()
 	if (peek(identifier)) {
 		next_token();
 		if (current.value == "s") multiplier = sample_rate;
-		if (current.value == "ms") multiplier = sample_rate / 1000;
+		else if (current.value == "ms") multiplier = sample_rate / 1000;
+		else error("Invalid literal operator or stray identifier");
 	}
 
 	return std::stof(number) * multiplier;
@@ -533,12 +618,12 @@ Sequence Parser::parse_sequence()
 {
 	Sequence s;
 	next_token();
-	s.data.push_back(parse_expression().get_value<float>());
+	s.data.push_back(parse_expression().get_value<Number>());
 
 	while (peek(comma)) {
 		expect(comma);
 		next_token();
-		s.data.push_back(parse_expression().get_value<float>());
+		s.data.push_back(parse_expression().get_value<Number>());
 	}
 	
 	expect(close_brace);
@@ -570,8 +655,7 @@ void Parser::expect(TokenType expected)
 void Parser::verify(TokenType expected)
 {
 	if (current.type != expected) {
-		std::cout << current.value << std::endl;
-		error("Got " + debug_names[current.type] + ", expected " + debug_names[expected]);
+		error("Got " + debug_names.at(current.type) + ", expected " + debug_names.at(expected));
 	}
 }
 

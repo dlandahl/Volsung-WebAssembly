@@ -25,9 +25,18 @@ int main(int argc, char ** argv)
 	});
 
 	Program::add_directive("log", [] (std::vector<TypedValue> arguments, Program*) {
-		Volsung::log(arguments[0].get_value<std::string>());
+		if (arguments[0].is_type<float>()) Volsung::log(std::to_string(arguments[0].get_value<float>()));
+		if (arguments[0].is_type<std::string>()) Volsung::log(arguments[0].get_value<std::string>());
+		if (arguments[0].is_type<Sequence>()) {
+			Sequence s = arguments[0].get_value<Sequence>();
+			std::cout << "{ ";
+			std::cout << s.data[0];
+			for (int n = 1; n < s.size(); n++) std::cout << ", " << s.data[n];
+			std::cout << " }\n";
+		}
+		std::cout << std::flush;
 	});
-	
+
 	Program::add_directive("mono", [] (std::vector<TypedValue> arguments, Program*) {
 		EM_ASM_({
 			set_mono();

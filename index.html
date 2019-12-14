@@ -10,34 +10,48 @@
 		  margin: 0 auto;
 		  outline: 8px solid #333;
 		  box-shadow: 5px 5px 8px #000;
-		  font-size: 100% !important;
 	  }
-	  
-	  textarea {
+
+	  textarea:disabled {
 		  outline: 8px solid #333;
 		  box-shadow: 5px 5px 8px #000;
 		  resize: none;
 		  width: 100%;
 		  height: 18%;
+		  font-size: 100% !important;
 		  background-color: #151515;
 		  font-family: Fira mono;
-		  font-size: 100% !important;
+		  color: #ddd;
 	  }
-	  
+
 	  body {
 		  background-color: #8888a8;
-		  background-image: url('res/Sigurd.svg');
 		  background-repeat: no-repeat;
 		  background-attachment: fixed;
 		  background-position: 50% 50px;
- 		  font-family: Noto sans;
+		  background-image: url('res/Sigurd.svg');
+ 		  font-family: noto;
+		  font-weight: 500;
 		  margin: 0 auto;
 		  padding: 0 auto;
 	  }
-	  
+
+	  button {
+		  height: 30px;
+	  }
+
+	  select {
+		  height: 30px;
+	  }
+
 	  @font-face {
 		  font-family: norse;
 		  src: url(res/Norse.otf);
+	  }
+
+	  @font-face {
+		  font-family: noto;
+		  src: url(res/NotoSans-Medium.ttf);
 	  }
 
 	  .column {
@@ -47,7 +61,7 @@
 		  padding-top: 1%;
 		  position: relative;
 	  }
-	  
+
 	  .row:after {
 		  content: "";
 		  display: table;
@@ -82,7 +96,7 @@
 		  word-spacing: 4px;
 		  line-height: 24px;
 	  }
-	  
+
 	  .header {
 		  background-color: #a8a8c8;
 		  width: 100%;
@@ -102,7 +116,6 @@
 	  }
 
 	  .header_text {
-		  font-family: Noto sans;
 		  font-size: 140%;
 		  position: relative;
 		  color: #222;
@@ -132,6 +145,7 @@
 		  outline: none;
 		  cursor: pointer;
 		  padding: 14px 16px;
+		  height: 55px;
 		  font-size: 17px;
 		  float: left;
  	  }
@@ -153,9 +167,9 @@
     <link rel="stylesheet" href="lib/base16-dark.css">
 	<link rel="stylesheet" href="lib/codemirror.css">
 	<link href="https://fonts.googleapis.com/css?family=Fira+Mono&display=swap" rel="stylesheet">
-	<link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet"> 
   </head>
   <body>
+	<div class="fademe"></div>
 	<div class="header">
 	  <h1>&nbsp;Volsung</h1>
 	  <div class="header_text">&nbsp;&nbsp;&nbsp;
@@ -180,17 +194,18 @@
 		<select id="preset" onchange="load_preset();">
 		  <option value="tone">Tone Generator</option>
 		  <option value="fm">Frequency Modulation</option>
-		  <option value="additive">Additive Synthesis</option>
 		  <option value="pentatonic">Random Melody</option>
+		  <option value="additive">Additive Synthesis</option>
 		  <option value="thx">Swarm Generator</option>
 		  <option value="vocoder">Vocoder</option>
+		  <option value="reverb">Reverb</option>
 		  <option value="empty">Empty</option>
 		</select><br/><br/>
 		<div class="code" id="code_editor"></div>
 		<br/><button id="interp" onclick="parse_code()" disabled="true">Interpret</button>
 		<button id="kill" onclick="source.stop()" disabled="true">Stop</button>
 		<label id="indicator">WASM still loading...</label>
-		<br/><br/><textarea id="out" spellcheck="false" disabled=true></textarea>
+		<br/><br/><textarea id="out" spellcheck="false" disabled="true"></textarea>
 	  </div>
 	</div>
 	<script src="lib/codemirror.js"></script>
@@ -202,11 +217,10 @@
 			  { regex: /\;.*/, token: "comment" },
 			  { regex: /(<>|>>|x>|=>|->)/, token: "variable" },
 			  { regex: /\w+~/, token: "keyword" },
-			  { regex: /[0-9]+(\.[0-9]+)?/, token: "atom" },
+			  { regex: /[0-9]+(\.[0-9]+)?/, token: "number" },
 			  { regex: /".*?("|$)/, token: "string" },
 			  { regex: /'.*?'/, token: "string" },
-			  { regex: /^\&[^ ]+/, token: "variable-2" }
-		  ]
+			  { regex: /^\&[^ ]+/, token: "variable-2" } ]
 	  });
 
 	  var myCodeMirror = CodeMirror(document.getElementById("code_editor"), {
@@ -315,58 +329,80 @@
 
 	  
 	</script>
-	<script src="a.out.js?version=400000"></script>
+	<script src="a.out.js?version=400004"></script>
 
 	<script>
 	  function select_tab(tab_name) {
 		  var text = document.getElementById("main_text");
-		  if (tab_name == 'tutorial') text.innerHTML = `<h2>Language Tutorial</h2><h3>Declarations</h3>In Volsung, declarations are used to create objects to be used as verteces in the DSP graph, and values which can be used to initialize those objects. A standalone declaration is always an identifier chosen by the user, followed by a colon, followed by the value to be stored with that identifier:
+		  if (tab_name == 'tutorial') text.innerHTML = `<h2>Language Tutorial</h2><h3>Definitions</h3>In Volsung, definitions are used to create objects to be used as verteces in the DSP graph, and values which can be used to initialize those objects. A standalone definition is always an identifier chosen by the user, followed by a colon, followed by the value to be stored with that identifier:
 <pre>id: value</pre>
-In the case of an object declaration, the value is an object literal. An object literal is the type of an object, followed by a tilde, followed by its parameters. Object types are always suffixed with tilde characters <code>~</code>, to separate them from other identifiers. Constants can also be declared, and on the right hand side of a constant declaration should be an expression from which the type and value of the constant can be inferred:
+In the case of an object definition, the value is an object literal. An object literal is the type of an object, followed by a tilde, followed by its parameters. Object types are always suffixed with tilde characters <code>~</code>, to separate them from other identifiers. Constants can also be defined, and on the right hand side of a constant definition should be an expression from which the type and value of the constant can be inferred:
 <pre>frequency: 440\nmy_oscillator: osc~ frequency</pre>
 The above code creates a constant <code>frequency</code> and an oscillator which can later be referred to using its identifier <code>my_oscillator</code>.
-The constant is also used as the first parameter in the object declaration, which is the frequency of the sine oscillator in the case of the <code>osc~</code> type of object. Different object types will process their parameters and input data differently, and produce different output data.
+The constant is also used as the first parameter in the object definition, which is the frequency of the sine oscillator in the case of the <code>osc~</code> type of object. Different object types will process their parameters and input data differently, and produce different output data.
 
 <br/><br/><h3>Expressions and sequences</h3>
 The constant from the above code also has the <code>Number</code> data-type associated with it, as it has been inferred from the expression '<code>440</code>'. The other two currently-available data-types are <code>Text</code> and <code>Sequence</code>. Sequence literals consist of curly braces, encapsulating a list of comma separated expressions which evaluate to Numbers:
-<pre>my_number: 100\nmy_sequence: { 0, my_number, 5/2, 4^(2/3), { 5 }[0] }</pre>
-The final value consists of a sequence of one value, which has been subscripted with zero, extracting the first value (which leaves the number 5). Naturally, the basic arithmetic operators <code>+, -, *, /, ^</code> can be used to perform arithmetic on literals and identifiers of constants, with the expected associativity and precendence.<br/>If a subexpression consisting of an arithmetic operator with a Number operand and a Sequence operand is evaluated, the resulting type is a Sequence, with the arithmetic operation performed on each of its values. Arithmetic sequences (those with a constant difference between consecutive terms) can also be created using shorthand sequence generators, with the following syntax: <code>start_value..end_value|step_size</code>. The vertical bar - step_size are optional, and the common difference will default to one:
-<pre>; Results in { 1, 4, 9, 16 }\nsquares: (1..4)^2</pre>
+<pre>my_number: 100\nmy_sequence: { 0, my_number, 5ms/2, 4^(2/3), { 5 }[0] }</pre>
+The final value consists of a sequence of one value, which has been subscripted with zero, extracting the first value (which leaves the number 5). Naturally, the basic arithmetic operators <code>+, -, *, /, ^</code> can be used to perform arithmetic on literals and identifiers of constants, with the expected associativity and precendence. The third value also uses the literal operator <code>ms</code>. This multiplies the value of the attached numeric literal by <code>fs / 1000</code>, converting from samples to milliseconds. You can also use the literal operator <code>s</code> to convert from samples to seconds.<br/>If a subexpression consisting of an arithmetic operator with a Number operand and a Sequence operand is evaluated, the resulting type is a Sequence, with the arithmetic operation performed on each of its values. Arithmetic sequences (those with a constant difference between consecutive terms) can also be created using shorthand sequence generators, with the following syntax: <code>start_value..end_value|step_size</code>. The vertical bar - step_size are optional, and the common difference will default to one:
+<pre>; Results in { 1, 4, 9, 16 }\nsquares: (1..4)^2\n&log squares</pre>
 Note that without the parentheses, the exponentiation would take precendence over the sequence generation operator, resulting in a sequence with the numbers 1 through 16. Also notice that both start and end values are inclusive.
+Sequences can also be subscript with other sequences. In this case, the second sequence is used as a set of indices into the first sequence, returning a third. Here's an example:
+<pre>; Results in { 100, 200, 300, 200, 100 }\nhundreds: { 100, 200, 300, 400 }\n&log hundreds[{ 0, 1, 2, 1, 0 }]</pre>
 
 <br/><br/><h3>Connections</h3>
 Once several objects have been created, they can be connected together to form a graph. The basic connection operator <code>-></code> connects two objects together. In the following example, a sine wave signal is generated, attenuated by a factor of 0.5 (6 decibels) and the data is written to a file on disk:
 <pre>source: osc~ 440\ndisk: file~ "output.raw"\ngain: mult~ 0.5\nsource -> gain -> disk</pre>
-Be aware that the file~ object is currently not functional in the browser-based interpreter, since WebAssembly is not allowed to access your file system.<br/>Instead of declaring every individual object, objects can also be created inline, within a connection statement using just object literals. These objects will be anonymous, and cannot be referred to again later in the program:
+Be aware that the file~ object is not able to write files in the browser-based interpreter, and can only access the preloaded files in <code>files/</code>. See the vocoder demo for an example.<br/>Instead of declaring every individual object, objects can also be created inline, within a connection statement using just object literals. These objects will be anonymous, and cannot be referred to again later in the program:
 <pre>osc~ 440 -> *0.5 -> file~ "output.raw"</pre>
 This style of programming is also less descriptive, as objects do not have names describing their role in the processing graph. Notice the use of an asterisk as a shorthand for a <code>mult~</code> object. Basic arithmetic objects can be created inline using arithmetic operators as a shorthand. The code above multiplies a signal by a constant. In order to multiply two signals (performing ring modulation), we need to supply a second input signal to the <code>mult~</code> object. Using the second input port of the <code>mult~</code> object overrides the constant parameter provided as a multiplier, and we won't provide one for this reason. To specify which input or output port on an object a connection should go to and from, use an integral index and a vertical bar:
 <pre>ringmod: mult~\n\nosc~ 300 -> ringmod\nosc~ 50 -> 1|ringmod -> output</pre>
-Input port and output port indeces default to 0. Therefore, all the programs we have written before just use the input and output port 0 on all connections. 
+Input port and output port indices default to 0. Therefore, all the programs we have written before just use the input and output port 0 on all connections. 
 <pre>; These two lines of code are equivalent\nsource   -> gain     -> disk\nsource|0 -> 0|gain|0 -> 0|disk</pre>
-Also notice the use of the <code>output</code> object, without it having been declared. This is an ambient object which is created before the main code is interpreted. Which ambient objects are available depends on the front-end environment the language is running in and also your hardware configuration. A language front-end, such as a VST plugin or standalone software, should normally be implemented such that there is one input port on the output object for each audio output channel that is available.
+Also notice the use of the <code>output</code> object, without it having been defined. This is an ambient object which is created before the main code is interpreted. Which ambient objects are available depends on the front-end environment the language is running in and also your hardware configuration. A language front-end, such as a VST plugin or standalone software, should normally be implemented such that there is one input port on the output object for each audio output channel that is available.
 
 <br/><br/><h3>Groups</h3>
-A Group in Volsung is an abstraction that allows you to declare many objects of the same type and address them as one object. They can also be indexed, and are slightly analogous to arrays in many high level general purpose languages. Here is the basic syntax for group declarations:
+A Group in Volsung is an abstraction that allows you to define many objects of the same type and address them as one object. They can also be indexed, and are slightly analogous to arrays in many high level general purpose languages. Here is the basic syntax for group definitions:
 <pre>identifier: [5] type~ parameter</pre>
-This creates five objects of type <code>type</code>. A provided number parameter will be used as a parameter for each object. If a sequence parameter is provided instead, it should be the same length as the number of objects in the group, and the <code>nth</code> value in the sequence will be used to initialize the <code>nth</code> object. One way to address and connect these objects in the group is to subscript the group:
+This creates five objects of type <code>type</code>. As in a regular object definition, a comma delimited list of expressions can be used to initialize parameters on the objects. However in the case of groups, a symbol <code>n</code> is implicitly introduced, which always holds the index of the object currently being initialized, starting from 1. One way to address and connect these objects in the group is to subscript the group:
 <pre>bank: [5] osc~ 440\nbank[0] -> output</pre>
 However, the true usefulness comes from being able to connect them up in one go. In order to allow terse connection statements involving entire groups, a few new explicit arrow operators are introduced:
 <pre>a >> b ; Many-to-one
 a => b ; Many-to-many (parallel)
 a <> b ; One-to-many
-a x> b ; Complete bipartite connection
+a x> b ; Biclique connection
 </pre>
+Respectively, these can be used to connect each object in a group to one object, connect each object in a group to each object in another group, connect an object to each object in a group, or to connect every object in one group to every object in another. Naturally, groups can also be created anonymously in a connection statement.
+
+<br/><br/><h3>Subgraphs</h3>
+Subgraphs are a way of creating custom object types. Sometimes, a certain subset of the processing graph should be grouped together, either to allow code reuse and to avoid repetition, or to create a semantic unit for clarity and readability. Instances of subgraphs are somewhat analogous to objects in object oriented programming, since they can be used for grouping together data and its behaivour. Subgraph types can be defined using a name followed by a pair of parenthesized, comma separated expressions to specify the number of inputs and outputs on the left-hand-side, in addition to a block of brace-enclosed Volsung code on the right-hand-side of a definition:
+<pre>my_subgraph(0, 1): {
+    osc~ _1 -> *_2 -> output
+}
+</pre>
+<code>_1</code> and <code>_2</code> are symbols into which the positional parameters of the object definition are substituted. Thereby, the above code creates an oscillator for which both the volume and the frequency can be specified using parameters. The new custom object type can now be used like any regular built-in object: <code>my_subgraph~ 440, 0.5 -> output</code>. Definitions which are outside the subgraph are not visible from within, so any data which needs to be moved into-or-out-of the subgraph has to use the <code>input</code> and <code>output</code> objects which are created implicitly. These io objects have a number of ports as specified on the left-hand-side of the subgraph definition. The subgraph above has no output ports on the <code>input</code> object, and one input port on the <code>output</code> object.
+
+<br/><br/><h3>Directives</h3>
+The web interpreter provides a few special directives, which can be accessed using the ampersand character <code>&</code>. <code>&stereo</code> will make the program output stereo, and <code>&length</code> expects an expression describing the length of audio playback in samples.
+<pre>&stereo
+&length 4s
+osc~ 400 -> 0|output
+osc~ 500 -> 1|output
+</pre>
+
+<br/>
+That's all for now. More language features, performance improvements, documentation, and front-ends will be added soon. Please <a href="mailto:landahl2014@gmail.com">contact me</a> with problems, suggestions, criticisms.<br/><br/>
 `;
 
 
-		  
-		  if (tab_name == 'overview') text.innerHTML = `<h2>Overview</h2><h3>Introduction</h3>Volsung is a new language for audio, currently in early development. It can be used for sound synthesis, audio effect processing, and generative music composition. Aimed at musicians, it is designed to be visual and intuitive, while providing language constructs and abstractions that enable terse and expressive code. Volsung draws inspiration from similar DSP languages such as Miller Puckette's <a href="https://puredata.info">Pure Data</a>, Standford's <a href="http://chuck.stanford.edu">ChucK</a>, and <a href="https://faust.grame.fr">FAUST</a>, developed at the Générateur de Ressources et d’Activités Musicales Exploratoires (GRAME).
+
+		  if (tab_name == 'overview') text.innerHTML = `<h2>Overview</h2><h3>Introduction</h3>Volsung is a new language for audio, currently in early development. It can be used for sound synthesis, audio effect processing, and generative music composition. Aimed at musicians, it is designed to be visual and intuitive, while providing language constructs and abstractions that enable more terse and expressive algorithm design than other audio languages. Volsung draws inspiration from similar DSP languages such as Miller Puckette's <a href="https://puredata.info">Pure Data</a>, Stanford's <a href="http://chuck.stanford.edu">ChucK</a>, and <a href="https://faust.grame.fr">FAUST</a>, developed at the Générateur de Ressources et d’Activités Musicales Exploratoires (GRAME).
 
 
 			<br/><br/><h3>Data-flow programming</h3>Volsung employs the data-flow programming paradigm. Data-flow programming is based around creating directed mathematical graphs, the verteces of which represent procedures, and the edges of which represent data. Each edge holds input parameters of one procedure and return data of another. The graph is constructed by declaring audio or logic processing devices (also objects), and connecting them using arrow operators. The basic connection operator <code>-></code> connects an output port on one object to an input port on another. Data-flow systems are reminiscent of things like guitar pedal-boards and modular synthesizers, and are already familiar for most creative pracitioners in the field of audio.
 
 
-	  			<br/><br/><h3>Front-ends</h3>The language can currently be accessed through compiling the source code into a minimal front-end, or through the WebAssembly web-interpreter to the right of this page. Deployment through a wide range of existing technologies is planned, including Steinberg VST, VCVRack module, Unity3D plugin, Audiokinetic Wwise plugin, and Eurorack hardware.<br/><br/>`;
+	  		<br/><br/><h3>Front-ends</h3>Deployment through a wide range of existing technologies is planned, including Steinberg VST, VCVRack module, Unity3D plugin, Audiokinetic Wwise plugin, and Eurorack hardware.<br/><br/>`;
 }
 
 	  select_tab('overview');
@@ -393,66 +429,82 @@ a x> b ; Complete bipartite connection
 		  if (preset == "pentatonic") {
 			  myCodeMirror.setValue(`
 &stereo
+&length 10s
 
 ; Try editing these
-seed: 7
 rate: 1s / 3
-length: 10s
-root: 440
+max_decay: 330ms
+delay_scale: 1
 
+stereo_delay(1, 2): {
+	; Stereo delay with adjustable feedback,
+    ; left delay time, and right delay time
+    
+	fb: _1
+    delay_L: _2
+    delay_R: _3
 
-&length length
+	delay: [2] ddl~ { delay_L, delay_R }[n-1]
+	feedback: [2] mult~ fb
+    attenuate: [2] div~ 3
+    
+	input <> delay
+	=> feedback
+	=> delay
+    => [2] sat~
+    => attenuate
+    
+    attenuate[0] -> 0|output
+	attenuate[1] -> 1|output
+}
+
+random_range(1, 1): {
+	; Generates a random value in a given range
+    ; every time a gate is recieved
+    
+	min: _1
+    max: _2
+    
+	snh: snh~
+    input -> 1|snh
+    noise~ -> *0.5 -> +0.5
+    -> *max - min -> +min
+    -> snh -> output
+}
 
 ; Generate the frequencies of the pentatonic scale
-scale: { 0, 2, 4, 7, 9 }
-freqs: (2^(1/12))^(scale - 5) * root
+freqs: (2^(1/12))^{ 0, 2, 4, 7, 9 } * 329.63
 
-vca: mult~
-clock: add~ 0
-clock~ rate -> ddl~ seed -> clock
+; Master clock
+clock: clock~ rate
 
 ; Trigger envelope into VCA
 eg: eg~
+vca: mult~
 clock
 -> eg
 -> pole~ 30
 -> 1|vca
 
-
-; Randomise decay time
-snh: snh~
-clock -> 1|snh
-noise~
--> *0.5 -> +0.5
--> *330ms
--> snh -> 1|eg
+; Randomise decay time on clock pulse
+clock
+-> random_range~ 10ms, max_decay
+-> 1|eg
 
 
-; Generate sine melody
-index: snh~
-clock -> 1|index
-sound: add~ 0
-
-noise~ -> index
--> *0.5 -> +0.5
--> *4.9
+; Choose a random note from the
+; pentatonic scale on clock pulse
+clock
+-> random_range~ 0, 4.99
 -> seq~ freqs
 -> osc~
 -> vca
--> sound
 
-
-; Echo circuit
-delay: [2] ddl~ { 500ms, 833.33ms }
-feedback: [2] mult~ 0.5
-sound <> delay
-=> feedback
-=> delay
-
-
-; Saturate and output
-delay[0] -> sat~ -> /3 -> 0|output
-delay[1] -> sat~ -> /3 -> 1|output
+; Apply echo and output
+echo: stereo_delay~ 0.5, 500ms * delay_scale, 833.33ms * delay_scale
+vca -> echo
+echo|0 -> 0|output
+echo|1 -> 1|output
 `);
 		  }
 		  if (preset == "additive") {
@@ -463,14 +515,13 @@ delay[1] -> sat~ -> /3 -> 1|output
 mult: 1
 
 N: 30
-n: 1..N*mult|mult
+indices: 1..N*mult|mult
 
-partials: [N] osc~ n*200
-gain: [N] div~ n
+partials: [N] osc~ indices[n-1]*200
 gate: [N] mult~
-threshold: [N] comp~ n / 20 / mult
+threshold: [N] comp~ n / 20
 
-partials => gain => gate >> *0.3 -> output
+partials => [N] div~ n => gate >> *0.3 -> output
 timer~ <> threshold => 1|gate
 `);
 		  }
@@ -482,12 +533,12 @@ timer~ <> threshold => 1|gate
 N: 5
 swarm: [N] saw~ 
 
-; For random offset frequencies
-offset: [N] mult~ { r, r, r, r, r } * 100
+; Random offset frequencies
+offset: [N] mult~ (r-0.5) * 200
 
 ; The base frequency for each oscillator will
 ; be added to the offset
-base_frequency: [N] add~ 55 * (1..N)
+base_frequency: [N] add~ n * 55
 
 ; Use a timer~ to decrease the amount of offset over time
 ; sat~ is used to stop the timer exceeding 1
@@ -525,62 +576,76 @@ timer~ -> ^2 -> *100 -> 1|index
 		  }
 		  if (preset == "vocoder") {
 			  myCodeMirror.setValue(`
-N: 12
-modulator: file~ "files/antikythera.raw"
-carrier: [4] saw~ (1..4)*75
+; Define a vocoder type
+vocoder(2, 1): {
+    N: _1
 
+    ; Frequency bands are spaced evenly on a logarithmic scale
+    frequency_bands: ((1..N)/N)^2 * 3000
+    
+    &log "Frequency Bands: " + frequency_bands
+    
+    ; Define bandpass filter banks for carrier and modulator
+    carrier_bands: [N] bpf~ frequency_bands[n-1], 16
+    mod_bands: [N] bpf~ frequency_bands[n-1], 8
 
-frequency_bands: (1..N)^2*23 + 30
+    ; Envelope followers applied to the modulator bands determine
+    ; the gain applied to the carrier bands
+    amps: [N] mult~
+    followers: [N] env~ 10ms
 
-carrier_bands: [N] bpf~ frequency_bands
-mod_bands: [N] bpf~ frequency_bands
+    ; Connect them up
+    input|0 <> mod_bands     => followers => 1|amps
+    input|1 <> carrier_bands => amps      >> /6 -> output
+}
 
-amps: [N] mult~
-followers: [N] env~ 10ms
+&length 13.5s
 
-
-modulator <> mod_bands     => followers => 1|amps
-carrier   x> carrier_bands => amps      >> output
-
-&length 15.7s
-
-
-; Set bandwidth
-const~ 15 <> 2|carrier_bands
-const~ 15 <> 2|mod_bands
-`);
-		  }
-		  if (preset == "vocoder") {
-			  myCodeMirror.setValue(`
-; Number of bands
-N: 12
+; Make a vocoder with twenty-four bands
+voc: vocoder~ 24
 
 ; Acquire carrier and modulator signals
-modulator: file~ "files/speech"
-carrier: [4] saw~ (1..4)*75
+carrier: [4] saw~ n*85
+modulator: file~ "files/antikythera"
 
-; Calculate positions for frequency bands in the spectrum
-frequency_bands: (1..N)^2*23 + 30
+carrier >> 1|voc
+modulator -> voc -> output
+`);
+		  }
+		  if (preset == "reverb") {
+			  myCodeMirror.setValue(`
+; Modulated Schroeder-Moore lowpass feedback comb filter
+LBCF (1, 1): {
+	M: _1 ; Filter order
 
-; Declare bandpass filter banks for carrier and modulator
-carrier_bands: [N] bpf~ frequency_bands
-mod_bands: [N] bpf~ frequency_bands
+    buffer: ddl~ M
+    sum: add~
 
-; Envelope followers applied to the modulator signal bands determine
-; the gain applied to the carrier signal bands
-amps: [N] mult~
-followers: [N] env~ 10ms
+    input
+    -> sum
+    -> buffer
+    -> *-0.84       ; Decay
+    -> pole~ 15000  ; Colour
+    -> 1|sum
 
-; Connect them up
-modulator <> mod_bands     => followers => 1|amps
-carrier   x> carrier_bands => amps      >> output
+	-> output
 
-; Length of audio to be generated is length of the speech sample
-&length 14.5s
+    ModAmt: 0.2
+    osc~ r / 10
+    -> *0.5 -> +0.5
+    -> *M*ModAmt -> +M-M*ModAmt
+    -> 1|buffer
+}
 
-; Set bandwidth (fix me any day now)
-const~ 15 <> 2|carrier_bands
-const~ 15 <> 2|mod_bands
+; From Freeverb
+orders: { 1557, 1617, 1491, 1422, 1277, 1356, 1188, 1113 }
+
+; Eight parallel combs
+file~ "files/drumbeat"
+<> [8] LBCF~ orders[n-1]
+>> * 0.1 -> output
+
+&length 10s
 `);
 		  }
 	  }
