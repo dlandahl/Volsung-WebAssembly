@@ -334,7 +334,7 @@
 	<script>
 	  function select_tab(tab_name) {
 		  var text = document.getElementById("main_text");
-		  if (tab_name == 'tutorial') text.innerHTML = `<h2>Language Tutorial</h2><h3>Definitions</h3>In Volsung, definitions are used to create objects to be used as verteces in the DSP graph, and values which can be used to initialize those objects. A standalone definition is always an identifier chosen by the user, followed by a colon, followed by the value to be stored with that identifier:
+		  if (tab_name == 'tutorial') text.innerHTML = `<h2>Language Tutorial</h2><h3>Definitions</h3>In Volsung, definitions are used to create objects to be used as verteces in the DSP graph, and constants which can be used to initialize those objects. A standalone definition is always an identifier chosen by the user, followed by a colon, followed by the value to be stored with that identifier:
 <pre>id: value</pre>
 In the case of an object definition, the value is an object literal. An object literal is the type of an object, followed by a tilde, followed by its parameters. Object types are always suffixed with tilde characters <code>~</code>, to separate them from other identifiers. Constants can also be defined, and on the right hand side of a constant definition should be an expression from which the type and value of the constant can be inferred:
 <pre>frequency: 440\nmy_oscillator: osc~ frequency</pre>
@@ -396,7 +396,7 @@ That's all for now. More language features, performance improvements, documentat
 
 
 
-		  if (tab_name == 'overview') text.innerHTML = `<h2>Overview</h2><h3>Introduction</h3>Volsung is a new language for audio, currently in early development. It can be used for sound synthesis, audio effect processing, and generative music composition. Aimed at musicians, it is designed to be visual and intuitive, while providing language constructs and abstractions that enable more terse and expressive algorithm design than other audio languages. Volsung draws inspiration from similar DSP languages such as Miller Puckette's <a href="https://puredata.info">Pure Data</a>, Stanford's <a href="http://chuck.stanford.edu">ChucK</a>, and <a href="https://faust.grame.fr">FAUST</a>, developed at the Générateur de Ressources et d’Activités Musicales Exploratoires (GRAME).
+		  if (tab_name == 'overview') text.innerHTML = `<h2>Overview</h2><h3>Introduction</h3>Volsung is a new language for audio. It can be used for sound synthesis, audio effect processing, and generative music composition. Aimed at musicians, it is designed to be visual and intuitive, while providing language constructs and abstractions that enable readable and terse algorithm design. Volsung draws inspiration from similar DSP languages such as Miller Puckette's <a href="https://puredata.info">Pure Data</a>, Stanford's <a href="http://chuck.stanford.edu">ChucK</a>, and <a href="https://faust.grame.fr">FAUST</a>, developed at the Générateur de Ressources et d’Activités Musicales Exploratoires (GRAME).
 
 
 			<br/><br/><h3>Data-flow programming</h3>Volsung employs the data-flow programming paradigm. Data-flow programming is based around creating directed mathematical graphs, the verteces of which represent procedures, and the edges of which represent data. Each edge holds input parameters of one procedure and return data of another. The graph is constructed by declaring audio or logic processing devices (also objects), and connecting them using arrow operators. The basic connection operator <code>-></code> connects an output port on one object to an input port on another. Data-flow systems are reminiscent of things like guitar pedal-boards and modular synthesizers, and are already familiar for most creative pracitioners in the field of audio.
@@ -614,7 +614,7 @@ modulator -> voc -> output
 		  }
 		  if (preset == "reverb") {
 			  myCodeMirror.setValue(`
-; Modulated Schroeder-Moore lowpass feedback comb filter
+; Modulated Schroeder-Moorer lowpass feedback comb filter
 LBCF (1, 1): {
 	M: _1 ; Filter order
 
