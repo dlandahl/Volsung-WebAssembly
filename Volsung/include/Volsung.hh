@@ -1,3 +1,4 @@
+
 #pragma once
 
 /*! \file */ 
@@ -20,18 +21,14 @@ class AudioObject;
 class CircularBuffer;
 
 using uint = unsigned;
-using buf  = std::vector<CircularBuffer>;
-
-inline std::map<std::string, std::string> macro_table;
+using MultichannelBuffer  = std::vector<CircularBuffer>;
 
 template <typename T>
-int sign(T val)
+int sign(const T val)
 {
-	return (T(0) < val) - (val < T(0));
+    return (T(0) < val) - (val < T(0));
 }
 
-
-inline int debug_level = 0;
 
 /*! \brief Callback for logging and debug messages
  *  
@@ -40,30 +37,30 @@ inline int debug_level = 0;
 
 inline std::function<void(std::string)> debug_callback = [] (std::string message) { std::cout << message; };
 
-inline void log(std::string message, int level=0)
+inline void log(const std::string& message)
 {
-	if (debug_level >= level) debug_callback(message + '\n');
+    debug_callback(message + '\n');
 }
 
 
 class VolsungException : public std::exception
 {
 public:
-	virtual const char* what() const noexcept override;
+    virtual const char* what() const noexcept override;
 };
 
 #undef assert
-inline void assert(bool condition, std::string message)
+inline void assert(const bool condition, const std::string& message)
 {
-	if (!condition) {
-		log(message);
-		throw VolsungException();
-	}
+    if (!condition) {
+        log(message);
+        throw VolsungException();
+    }
 }
 
-inline void error(std::string message)
+inline void error(const std::string& message)
 {
-	assert(0, message);
+    assert(0, message);
 }
 
 }

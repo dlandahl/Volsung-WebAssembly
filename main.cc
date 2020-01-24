@@ -21,18 +21,14 @@ int main(int argc, char ** argv)
 	Program::add_directive("length", [] (std::vector<TypedValue> arguments, Program*) {
 		EM_ASM_({
 			set_length($0);
-		}, arguments[0].get_value<float>());
+		}, (float) arguments[0].get_value<Number>());
 	});
 
 	Program::add_directive("log", [] (std::vector<TypedValue> arguments, Program*) {
-		if (arguments[0].is_type<float>()) Volsung::log(std::to_string(arguments[0].get_value<float>()));
-		if (arguments[0].is_type<std::string>()) Volsung::log(arguments[0].get_value<std::string>());
+		if (arguments[0].is_type<Number>()) Volsung::log( (Text) arguments[0].get_value<Number>());
+		if (arguments[0].is_type<Text>()) Volsung::log(arguments[0].get_value<Text>());
 		if (arguments[0].is_type<Sequence>()) {
-			Sequence s = arguments[0].get_value<Sequence>();
-			std::cout << "{ ";
-			std::cout << s.data[0];
-			for (int n = 1; n < s.size(); n++) std::cout << ", " << s.data[n];
-			std::cout << " }\n";
+			Volsung::log((Text) arguments[0].get_value<Sequence>());
 		}
 		std::cout << std::flush;
 	});
@@ -55,7 +51,7 @@ bool parse(std::string code)
 	Parser parser;
 	parser.source_code = code;
 	prog.reset();
-	prog.create_user_object("start", 0, 1, nullptr, [] (buf&, buf& output, std::any) {
+	prog.create_user_object("start", 0, 1, nullptr, [] (const MultichannelBuffer&, MultichannelBuffer& output, std::any) {
 		static bool do_thing = true;
 		if (do_thing) output[0][0] = 1;
 		do_thing = false;
