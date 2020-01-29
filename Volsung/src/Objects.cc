@@ -1,4 +1,5 @@
 
+#include <limits>
 #include <fstream>
 #include <vector>
 #include <cmath>
@@ -256,7 +257,6 @@ ClockObject::ClockObject(const std::vector<TypedValue>& parameters)
 {
     init(1, 1, parameters, { &interval });
     set_defval(&interval, interval, 0);
-    Volsung::log("created clock objects, output count: " + std::to_string(outputs.size()));
 }
 
 
@@ -371,7 +371,9 @@ RoundObject::RoundObject(const std::vector<TypedValue>&)
 
 void SequenceObject::process(const MultichannelBuffer& in, MultichannelBuffer& out)
 {
-    out[0][0] = sequence[(int) in[0][0]];
+    auto index = (std::size_t) std::max(0.f, in[0][0]);
+    if (index >= sequence.size()) index = sequence.size() - 1;
+    out[0][0] = sequence[index];
 }
 
 SequenceObject::SequenceObject(const std::vector<TypedValue>& parameters)
@@ -437,7 +439,6 @@ TriangleObject::TriangleObject(const std::vector<TypedValue>& parameters)
     set_defval(&frequency, frequency, 0);
 }
 
-#include <limits>
 void BiquadObject::process(const MultichannelBuffer& in, MultichannelBuffer& out)
 {
     if (!resonance) resonance = std::numeric_limits<float>::min();
@@ -548,6 +549,22 @@ SubgraphObject::SubgraphObject(const std::vector<TypedValue>& parameters)
     inputs  = parameters[0].get_value<Number>();
     outputs = parameters[1].get_value<Number>();
     set_io(inputs, outputs);
+}
+
+void ConvolveObject::process(const MultichannelBuffer& in, MultichannelBuffer& out)
+{
+    float value = 0;
+    for (std::size_t n = 0; n < impulse_response.size(); n++) {
+        value += impulse_response[n] * in[0][-n-1];
+    }
+    out[0][0] = value;
+}
+
+ConvolveObject::ConvolveObject(const std::vector<TypedValue>& parameters)
+{
+    set_io(1, 1);
+    impulse_response = parameters[0].get_value<Sequence>();
+    request_buffer_size(impulse_response.size());
 }
 
 }
