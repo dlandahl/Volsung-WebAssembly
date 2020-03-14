@@ -7,11 +7,12 @@
 #include <any>
 #include <random>
 #include <chrono>
+#include <array>
 
 #include "Volsung.hh"
+#include "AudioDataflow.hh"
 
 namespace Volsung {
-
 
 enum class Type {
     number,
@@ -28,21 +29,38 @@ enum class ConnectionType {
 };
 
 class TypedValue;
-class Number;
 class Text;
 class Sequence;
 class AudioObject;
 
 class Number
 {
-    float value = 0;
+    float real_part = 0;
+    float imag_part = 0;
 public:
     operator float&();
     operator float() const;
     operator Text() const;
 
+    bool is_complex() const;
+    float magnitude() const;
+    float angle() const;
+
     Number(float);
+    Number(float, float);
     Number() = default;
+
+    TypedValue add(const TypedValue&);
+    TypedValue subtract(const TypedValue&);
+    TypedValue multiply(const TypedValue&);
+    TypedValue divide(const TypedValue&);
+    TypedValue exponentiate(const TypedValue&);
+
+    Number add_num(const Number&) const;
+    Number subtract_num(const Number&) const;
+    Number multiply_num(const Number&) const;
+    Number divide_num(const Number&) const;
+    Number exponentiate_num(const Number&) const;
 };
 
 class Text
@@ -50,7 +68,7 @@ class Text
     std::string value;
 public:
     void operator=(std::string string) { value = string; }
-    Text& operator+(Text rhs) {
+    Text& operator+(const Text& rhs) {
         value = value + rhs.value;
         return *this;
     }
@@ -65,20 +83,31 @@ public:
 
 class Sequence
 {
+    // const size_t identifier;
+    // static inline std::vector<std::vector<Number>> sequence_table;
+    // std::vector<Number>* data;
     std::vector<Number> data;
-
-public:
-    std::size_t size() const;
-    operator Text() const;
-
-    void add_element(const Number);
-    void perform_range_check(const std::size_t) const;
     
+public:
+    size_t size() const;
+    operator Text() const;
+    void add_element(const Number);
+    void perform_range_check(const long long) const;
+
     Number& operator[](long long);
     const Number& operator[](long long) const;
 
+    TypedValue add(const TypedValue&);
+    TypedValue subtract(const TypedValue&);
+    TypedValue multiply(const TypedValue&);
+    TypedValue divide(const TypedValue&);
+    TypedValue exponentiate(const TypedValue&);
+
     auto begin() { return std::begin(data); }
     auto end() { return std::end(data); }
+
+    Sequence() = default;
+    Sequence(const std::vector<float>&);
 };
 
 using TypedValueBase = std::variant<Number, Text, Sequence>;
@@ -96,6 +125,8 @@ public:
     bool is_type() const;
 
     Type get_type() const;
+
+    std::string as_string() const;
 
     void operator+=(const TypedValue&);
     void operator-=(const TypedValue&);
@@ -120,13 +151,43 @@ inline std::string type_debug_name<Sequence>() { return "Sequence"; }
 
 
 class Program;
-using DirectiveFunctor = std::function<void(const std::vector<TypedValue>&, Program* const)>;
-using CallbackFunctor = std::function<void(const MultichannelBuffer&, MultichannelBuffer&, std::any)>;
+
+using ArgumentList = std::vector<TypedValue>;
+using DirectiveFunctor = std::function<void(const ArgumentList&, Program* const)>;
+using AudioProcessingCallback = std::function<void(const MultichannelBuffer&, MultichannelBuffer&, std::any)>;
 using SubgraphRepresentation = std::pair<const std::string, const std::array<float, 2>>;
 
 template <class T>
-using SymbolTable = std::unordered_map<std::string, T>;
+using SymbolTable = std::map<std::string, T>;
 using Frame = std::vector<float>;
+
+
+class Procedure
+{
+    using Implementation = std::function<TypedValue(const ArgumentList&, const Program*)>;
+    Implementation implementation;
+
+public:
+    const size_t min_arguments;
+    const size_t max_arguments;
+    const bool can_be_mapped;
+    TypedValue operator()(const ArgumentList&, const Program*) const;
+    Procedure(Implementation, size_t, size_t, bool = false);
+};
+
+
+/*
+class Allocator
+{
+    void* data;
+    std::size_t blocksize_bytes;
+    std::size_t num_blocks;
+public:
+    Allocator(Program* program) {
+        
+    }
+};
+*/
 
 /*! \brief An instance of a Volsung program
  *  
@@ -143,23 +204,23 @@ class Program
     uint outputs = 0;
     SymbolTable<std::unique_ptr<AudioObject>> table;
     SymbolTable<TypedValue> symbol_table;
-
-    mutable std::uniform_real_distribution<float> distribution;
-    mutable std::default_random_engine generator;
+    MultichannelBuffer out;
 
 public:
-    SymbolTable<const std::size_t> group_sizes;
+    static const SymbolTable<Procedure> procedures;
+
+    SymbolTable<const size_t> group_sizes;
     SymbolTable<const SubgraphRepresentation> subgraphs;
     Program* parent = nullptr;
     
     /*! \brief Used to create audio objects manually
      *  
      *  This template can be used to inject audio objects into the symbol table without
-     *  through the interpreter.
+     *  using the interpreter.
      */
 
     template<typename>
-    void create_object(const std::string&, const std::vector<TypedValue>&);
+    void create_object(const std::string&, const ArgumentList&);
 
     template<typename T>
     T* get_audio_object_raw_pointer(const std::string&) const;
@@ -180,7 +241,7 @@ public:
      */
 
     static void add_directive(const std::string&, const DirectiveFunctor);
-    void invoke_directive(const std::string&, const std::vector<TypedValue>&);
+    void invoke_directive(const std::string&, const ArgumentList&);
 
     /*! \brief Create an ambient user object
      *
@@ -189,7 +250,7 @@ public:
      *  User objects will be added to the symbol table upon reset of the program.
      */
 
-    void create_user_object(const std::string&, const uint, const uint, std::any, CallbackFunctor);
+    void create_user_object(const std::string&, const uint, const uint, std::any, AudioProcessingCallback);
 
     /*! \brief Add inputs and outputs to a program 
      *
@@ -202,18 +263,18 @@ public:
 
     /*! \brief Run the program
      *
-     *  Runs the program by running each audio object (unit generator) in the symbol table in turn. Doesn't give you back data.
+     *  Runs the program by running each audio object in the audio processing graph in turn. Doesn't give you back data.
      */
 
     void simulate();
 
     /*! \brief Run the program with one input and one output
      *
-     *  Runs the program by running each audio object (unit generator) in the symbol table in turn.
+     *  Runs the program by running each audio object in the audio processing graph in turn.
      *  Expects a sample which will be written to the "input" object, and returns a float sample from the "output" object, created by configure_io.
      */
-    float run(const float = 0);
-    Frame run(const Frame);
+    MultichannelBuffer run();
+    MultichannelBuffer run(const MultichannelBuffer);
 
     bool object_exists(const std::string&) const;
     void expect_to_be_object(const std::string&) const;
@@ -221,6 +282,8 @@ public:
 
     void finish();
     void reset();
+
+    const SubgraphRepresentation find_subgraph_recursively(std::string);
 
     auto begin() { return std::begin(table); }
     auto end() { return std::end(table); }
@@ -230,15 +293,11 @@ public:
 
     template<class T>
     T get_symbol_value(const std::string&) const;
-    
+
     TypedValue get_symbol_value(const std::string&) const;
     void add_symbol(const std::string&, const TypedValue&);
     void remove_symbol(const std::string&);
     bool symbol_exists(const std::string&) const;
-
-    Program() :
-        distribution(0.f, 1.f), generator(std::chrono::system_clock::now().time_since_epoch().count())
-    { }
 };
 
 using Graph = Program;
@@ -252,7 +311,7 @@ T* Program::get_audio_object_raw_pointer(const std::string& name) const
 }
 
 template<class Object>
-void Program::create_object(const std::string& name, const std::vector<TypedValue>& arguments)
+void Program::create_object(const std::string& name, const ArgumentList& arguments)
 {
     if (table.count(name) != 0) error("Symbol '" + name + "' is already used");
     table[name] = std::make_unique<Object>(arguments);
@@ -300,4 +359,15 @@ bool TypedValue::is_type() const
     return std::holds_alternative<T>(*this);
 }
 
+/*
+template <typename Callable>
+void visit_typed_value(Callable function, TypedValue& value, const TypedValue& other)
+{
+    switch(value.get_type()) {
+        case(Type::number):   value = function(&value.get_value<Number>(), other); break;
+        case(Type::sequence): value = function(&value.get_value<Sequence>(), other); break;
+        case(Type::text):     value = function(&value.get_value<Text>(), other); break;
+    }
+}
+*/
 }

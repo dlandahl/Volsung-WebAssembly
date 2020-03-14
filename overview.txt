@@ -1,0 +1,18 @@
+
+let OVERVIEW = `
+<h2>Overview</h2>
+<h3>Introduction</h3>
+
+Volsung is a new language for audio, currently in development. It can be used for sound synthesis, audio effect processing, and generative music composition. Aimed at musicians, it is designed to be visual and intuitive, while providing language constructs and abstractions that enable readable and terse algorithm design. Volsung draws inspiration from similar DSP languages such as Miller Puckette's <a href="https://puredata.info">Pure Data</a>, Stanford's <a href="http://chuck.stanford.edu">ChucK</a>, and <a href="https://faust.grame.fr">FAUST</a>, developed at the Générateur de Ressources et d’Activités Musicales Exploratoires (GRAME).
+
+
+<br/><br/>
+<h3>Data-flow programming</h3>
+
+Volsung employs the data-flow programming paradigm. Data-flow programming is based around creating directed mathematical graphs, the vertices (or nodes) of which represent processes, and the edges (or connections) of which represent data. Each edge holds input data of one process and output data of another. The graph is constructed by declaring audio or logic processing devices (also objects), and connecting them using arrow operators. The basic connection operator <code>-></code> connects an output port on one object to an input port on another.
+
+
+<br/><br/><h3>Front-ends</h3>
+
+Deployment through a wide range of existing technologies is planned, including Steinberg VST, VCVRack module, Unreal engine, Unity3D, Audiokinetic Wwise plugin, and Eurorack hardware.<br/><br/>
+`;

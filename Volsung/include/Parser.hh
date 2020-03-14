@@ -45,43 +45,43 @@ enum class TokenType {
 };
 
 inline const std::map<TokenType, std::string> debug_names = {
-{ TokenType::invalid, "Unrecognised Token" },
-{ TokenType::identifier, "Identifier" },
-{ TokenType::object, "Object Type" },
-{ TokenType::numeric_literal, "Number" },
-{ TokenType::string_literal, "String" },
-{ TokenType::arrow, "Arrow" },
-{ TokenType::colon, "Colon" },
-{ TokenType::open_brace, "Open Brace" },
-{ TokenType::close_brace, "Close Brace" },
-{ TokenType::open_paren, "Open Parenthesis" },
-{ TokenType::close_paren, "Close Parenthesis" },
-{ TokenType::open_bracket, "Open Bracket" },
-{ TokenType::close_bracket, "Close Bracket" },
-{ TokenType::greater_than, "Greater Than" },
-{ TokenType::less_than, "Less Than" },
-{ TokenType::newline, "Newline" },
-{ TokenType::comma, "Comma" },
-{ TokenType::ampersand, "Ampersand" },
-{ TokenType::plus, "Plus" },
-{ TokenType::minus, "Minus" },
-{ TokenType::slash, "Slash" },
-{ TokenType::asterisk, "Asterisk" },
-{ TokenType::caret, "Caret" },
-{ TokenType::many_to_one, "Many-to-One" },
-{ TokenType::one_to_many, "One-to-Many" },
-{ TokenType::vertical_bar, "Vertical Bar" },
-{ TokenType::parallel, "Parallel Connection Operator" },
-{ TokenType::cross_connection, "Cross Connection Operator" },
-{ TokenType::elipsis, "Elipsis" },
-{ TokenType::dot, "Dot" },
-{ TokenType::eof, "End of File" }
+{ TokenType::invalid, "unrecognised token" },
+{ TokenType::identifier, "identifier" },
+{ TokenType::object, "object type" },
+{ TokenType::numeric_literal, "number" },
+{ TokenType::string_literal, "string literal" },
+{ TokenType::arrow, "'Arrow' (->)" },
+{ TokenType::colon, "'Colon' (:)" },
+{ TokenType::open_brace, "'Open Brace' ({)" },
+{ TokenType::close_brace, "'Close Brace' (})" },
+{ TokenType::open_paren, "'Open Parenthesis' (()" },
+{ TokenType::close_paren, "'Close Parenthesis' ())" },
+{ TokenType::open_bracket, "'Open Bracket' ([)" },
+{ TokenType::close_bracket, "'Close Bracket' (])" },
+{ TokenType::greater_than, "'Greater Than' (>)" },
+{ TokenType::less_than, "'Less Than' (<)" },
+{ TokenType::newline, "end-of-line" },
+{ TokenType::comma, "'Comma' (,)" },
+{ TokenType::ampersand, "'Ampersand' (&)" },
+{ TokenType::plus, "'Plus' (+)" },
+{ TokenType::minus, "'Minus' (-)" },
+{ TokenType::slash, "'Slash' (/)" },
+{ TokenType::asterisk, "'Asterisk' (*)" },
+{ TokenType::caret, "'Caret' (^)" },
+{ TokenType::many_to_one, "'Many-to-One' (>>)" },
+{ TokenType::one_to_many, "'One-to-Many' (<>)" },
+{ TokenType::vertical_bar, "'Vertical Bar' (|)" },
+{ TokenType::parallel, "'Parallel Connection Operator' (=>)" },
+{ TokenType::cross_connection, "'Complete Bipartite Connection Operator' (x>)" },
+{ TokenType::elipsis, "'Elipsis' (..)" },
+{ TokenType::dot, "'Dot' (.)" },
+{ TokenType::eof, "end-of-file" }
 };
 
 struct Token
 {
     TokenType type;
-    std::string value = "";
+    std::string value;
 };
 
 /*! \brief A lexical analyser for a Volsung program
@@ -102,8 +102,8 @@ protected:
     bool peek_connection();
     virtual ~Lexer() = 0;
 
-    uint line = 1;
-    std::size_t position = -1;
+    size_t line = 1;
+    size_t position = (size_t) -1;
 
 public: 
     /*! \brief The source code to be lexed and parsed
@@ -132,22 +132,27 @@ class Parser : public Lexer
     void parse_declaration();
     void parse_subgraph_declaration();
     void parse_connection();
+    void parse_connection(std::string);
+
     Sequence parse_sequence();
     Number parse_number();
     void parse_directive();
+
+    TypedValue parse_procedure_call(const std::string&);
     std::string get_object_to_connect();
-    void make_object(const std::string&, const std::string&, const std::vector<TypedValue>&);
+    void make_object(const std::string&, const std::string&, const ArgumentList&);
     std::string parse_object_declaration(std::string = "");
 
     TypedValue parse_expression();
+    TypedValue parse_sequence_generator();
     TypedValue parse_product();
     TypedValue parse_power();
     TypedValue parse_factor();
 
     int inline_object_index = 0;
-    Graph* program;
-public:
+    Graph* program = nullptr;
 
+public:
     /*! \brief Parse a Program
      *  
      *  Parse the source code and supply the instance of Program to write the audio processing graph into.
@@ -157,3 +162,4 @@ public:
 };
 
 }
+

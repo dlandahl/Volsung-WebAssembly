@@ -19,8 +19,6 @@ inline float sample_rate = 44100.0f;
 
 using uint = unsigned;
 
-class CircularBuffer;
-using MultichannelBuffer  = std::vector<CircularBuffer>;
 
 template <typename T>
 int sign(const T val)
@@ -35,10 +33,9 @@ int sign(const T val)
  */
 
 inline std::function<void(std::string)> debug_callback = [] (std::string message) { std::cout << message; };
-
 inline void log(const std::string& message)
 {
-    debug_callback(message + '\n');
+    debug_callback(message);
 }
 
 
