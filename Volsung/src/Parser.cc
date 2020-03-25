@@ -12,6 +12,7 @@ const char* VolsungException::what() const noexcept
 Token Lexer::get_next_token()
 {
     position++;
+    if (current() == '\r') position++;
     if (current() == EOF || current() == -1) return { TokenType::eof, "" };
 
     while (current() == ' ' || current() == '\t') position++;
@@ -25,6 +26,11 @@ Token Lexer::get_next_token()
         case '-':
             position++;
             if (current() == '>') return { TokenType::arrow, "" };
+            if (current() == '-') {
+                position++;
+                if (current() == '>') return { TokenType::series, "" };
+                position--;
+            }
             position--;
             return { TokenType::minus, "" };
 
@@ -170,42 +176,63 @@ using ObjectMap = std::map<std::string, void(Program::*)(const std::string&, con
 #define OBJECT(x) &Program::create_object<x>
 static const ObjectMap object_creators =
 {
+    // Signal generation
     { "Sine_Oscillator",     OBJECT(OscillatorObject) },
     { "Saw_Oscillator",      OBJECT(SawObject) },
     { "Square_Oscillator",   OBJECT(SquareObject) },
     { "Triangle_Oscillator", OBJECT(TriangleObject) },
     { "Noise",               OBJECT(NoiseObject) },
     { "Constant",            OBJECT(ConstObject) },
+    { "Clock",               OBJECT(ClockObject) },
+    { "Timer",               OBJECT(TimerObject) },
+    { "Phasor",              OBJECT(PhasorObject) },
+
+    // Arithmetic
     { "Add",                 OBJECT(AddObject) },
     { "Multiply",            OBJECT(MultObject) },
     { "Subtract",            OBJECT(SubtractionObject) },
     { "Divide",              OBJECT(DivisionObject) },
     { "Power",               OBJECT(PowerObject) },
+    { "Exponentiate",        OBJECT(ExponentialObject) },
+
+    // Signal processing
     { "Delay_Line",          OBJECT(DelayObject) },
-    { "Clock",               OBJECT(ClockObject) },
+    { "Sample_And_Hold",     OBJECT(SampleAndHoldObject) },
     { "Envelope_Follower",   OBJECT(EnvelopeFollowerObject) },
     { "Envelope_Generator",  OBJECT(EnvelopeObject) },
-    { "Timer",               OBJECT(TimerObject) },
+    { "Clamp",               OBJECT(ClampObject) },
+    { "Inverse",             OBJECT(InverseObject) },
+    { "Comparator",          OBJECT(ComparatorObject) },
+    { "Reciprocal",          OBJECT(ReciprocalObject) },
+    { "Bi_to_Unipolar",      OBJECT(BiToUnipolarObject) },
+
+    // Maths functions
+    { "Sin",                 OBJECT(SinObject) },
+    { "Cos",                 OBJECT(CosObject) },
     { "Tanh",                OBJECT(DriveObject) },
     { "Modulo",              OBJECT(ModuloObject) },
     { "Abs",                 OBJECT(AbsoluteValueObject) },
     { "Floor",               OBJECT(RoundObject) },
-    { "Comparator",          OBJECT(ComparatorObject) },
-    { "Bi_to_Unipolar",      OBJECT(BiToUnipolarObject) },
+    { "Ceil",                OBJECT(CeilObject) },
+    { "Sign",                OBJECT(SignObject) },
+    { "Log",                 OBJECT(LogarithmObject) },
+    { "Atan",                OBJECT(AtanObject) },
+
+    // Sequences
     { "Write_File",          OBJECT(FileoutObject) },
     { "Read_File",           OBJECT(FileinObject) },
     { "Step_Sequence",       OBJECT(StepSequence) },
     { "Index_Sequence",      OBJECT(SequenceObject) },
-    { "Sample_And_Hold",     OBJECT(SampleAndHoldObject) },
+
+    // Frequency filters and frequency filter design
     { "Smooth",              OBJECT(FilterObject) },
     { "Lowpass_Filter",      OBJECT(LowpassObject) },
     { "Highpass_Filter",     OBJECT(HighpassObject) },
     { "Bandpass_Filter",     OBJECT(BandpassObject) },
     { "Allpass_Filter",      OBJECT(AllpassObject) },
     { "Convolver",           OBJECT(ConvolveObject) },
-    { "Z_Plane",             OBJECT(ZPlaneObject) },
     { "Pole",                OBJECT(PoleObject) },
-    { "Zero",                OBJECT(ZeroObject) }
+    { "Zero",                OBJECT(ZeroObject) },
 };
 #undef OBJECT
 
@@ -430,6 +457,9 @@ void Parser::parse_connection(std::string output_object)
             default: error("Expected connection operator, got " + debug_names.at(current_token.type));
         }
 
+        const bool series_modifier = peek(TokenType::series);
+        if (series_modifier) expect(TokenType::series);
+        
         if (peek(TokenType::numeric_literal)) {
             expect(TokenType::numeric_literal);
             input_index = std::stoi(current_token.value);
@@ -439,8 +469,17 @@ void Parser::parse_connection(std::string output_object)
 
         next_token();
         input_object = get_object_to_connect();
-        program->connect_objects(output_object, output_index, input_object, input_index, connection_type);
-        output_object = input_object;
+
+        if (series_modifier) {
+            program->connect_objects(output_object, output_index, "__grp_" + input_object + "0", input_index, connection_type);
+            program->connect_objects(output_object, output_index, input_object, input_index, ConnectionType::series);
+            output_object = "__grp_" + input_object + std::to_string(program->group_sizes[input_object] - 1);
+        }
+
+        else {
+            program->connect_objects(output_object, output_index, input_object, input_index, connection_type);
+            output_object = input_object;
+        }
 
         if (peek(TokenType::vertical_bar)) {
             expect(TokenType::vertical_bar);
@@ -609,7 +648,7 @@ TypedValue Parser::parse_sequence_generator()
                 s.add_element(lower + n * step_size);
             value = s;
         }
-        
+
         else {
             float step = 1;
             if (peek(TokenType::vertical_bar)) {

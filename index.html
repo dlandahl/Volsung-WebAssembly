@@ -37,11 +37,11 @@
       }
 
       button {
-          height: 30px;
+          height: 3%;
       }
 
       select {
-          height: 30px;
+          height: 3%;
       }
 
       @font-face {
@@ -84,10 +84,10 @@
 
       .text {
           width: 100%;
-          height: 74%;
+          height: 74.6%;
           margin: 0 auto;
           padding: 10px;
-          border-radius: 10px;
+          border-radius: 0.3%;
           font-size: 100%;
           background-color: #ddd;
           color: #333;
@@ -125,13 +125,13 @@
       code {
           font-family: Fira mono;
           background: #ccc;
-          border-radius: 3px;
+          border-radius: 1.3%;
       }
 
       pre {
           font-family: Fira mono;
           background: #ddd;
-          border-radius: 3px;
+          border-radius: 0.3%;
           word-spacing: 0px;
       }
 
@@ -145,7 +145,7 @@
           outline: none;
           cursor: pointer;
           padding: 14px 16px;
-          height: 55px;
+          height: 5%;
           font-size: 17px;
           float: left;
       }
@@ -185,9 +185,11 @@
         <div class="tab">
           <button class="tablinks" onclick="select_tab('overview')">Overview</button>
           <button class="tablinks" onclick="select_tab('tutorial')">Tutorial</button>
+          <!-- <button class="tablinks" onclick="select_tab('downloads')">Downloads</button> -->
         </div>
         <script src="overview.txt"></script>
         <script src="tutorial.txt"></script>
+        <script src="downloads.txt"></script>
         <div class="text" id="main_text"></div>
       </div>
       <div class="column">
@@ -195,11 +197,12 @@
         <select id="preset" onchange="load_preset();">
           <option value="Tone_Generator">Tone Generator</option>
           <option value="Frequency_Modulation">Frequency Modulation</option>
-          <option value="Additive_Synthesis">Additive Synthesis</option>
           <option value="Swarm_Generator">Swarm Generator</option>
+          <option value="Compressor">Dynamics Processing</option>
           <option value="Vocoder">Vocoder</option>
-          <option value="Reverb">Reverb</option>
-          <option value="Modal_Synthesis">Modal Synthesis</option>
+          <option value="Reverb">Reverberation</option>
+          <option value="Granular_Synthesis">Granular Synthesis</option>
+          <option value="Karplus_Strong">Physical Modeling</option>
           <option value="Empty">Empty</option>
         </select><br/><br/>
         <div class="code" id="code_editor"></div>
@@ -226,7 +229,7 @@
       });
 
       var myCodeMirror = CodeMirror(document.getElementById("code_editor"), {
-          value: "osc~ 440 -> output",
+          value: "\nprint(\"Hello, world!\")\n",
           theme: "base16-dark",
           lineNumbers: true,
           mode: "simplemode"
@@ -234,15 +237,11 @@
 
       myCodeMirror.setSize(null, "100%");
 
-
       var datal = [ 0 ];
       var datar = [ 0 ];
       var length = 44100;
-
       var mono = true;
       
-      function set_mono() { mono = true; }
-      function unset_mono() { mono = false; }
       function set_length(x) { length = x; }
       
       function add_to_data(x, y) {
@@ -293,17 +292,18 @@
 
               var x = buffer.getChannelData(0);
               var y = buffer.getChannelData(1);
-              for (var n = 0; n < length; n++) {
-                  if (mono) {
-                      x[n] = datal[n];
-                      y[n] = datal[n];
-                  }
-                  else {
+              if (!mono) {
+                  for (var n = 0; n < length; n++) {
                       x[n] = datal[n];
                       y[n] = datar[n];
                   }
               }
-              set_mono();
+              else {
+                  for (var n = 0; n < length; n++) {
+                      x[n] = datal[n];
+                      y[n] = datal[n];
+                  }
+              }
               length = 44100;
 
               source.buffer = buffer;
@@ -321,7 +321,7 @@
                       document.getElementById("indicator").innerHTML = "WASM is ready.";
                       log("========== Finished ==========");
                   }
-                  
+
                   datal = [];
                   datar = [];
               }, 100);
@@ -332,6 +332,7 @@
           var text = document.getElementById("main_text");
           if (tab_name == 'tutorial') text.innerHTML = TUTORIAL;
           if (tab_name == 'overview') text.innerHTML = OVERVIEW;
+          if (tab_name == 'downloads') text.innerHTML = DOWNLOADS;
       }
 
       select_tab('overview');
@@ -339,7 +340,6 @@
       function load_preset() {
           var preset = document.getElementById("preset").value;
 
-          var program = ""
           var client = new XMLHttpRequest();
           client.open("GET", "res/test_programs/" + preset + ".vlsng");
           client.onreadystatechange = function() {
@@ -350,7 +350,7 @@
 
       load_preset("tone");
     </script>
-    <script src="a.out.js?version=400004"></script>
+    <script src="a.out.js?version=1042"></script>
 </body>
 </html>
 

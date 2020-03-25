@@ -98,6 +98,7 @@ void FileinObject::process(const MultichannelBuffer&, MultichannelBuffer& output
         if (pos < data.size()) {
             output_buffer[0][n] = data[pos++];
         }
+        else output_buffer[0][n] = 0.f;
     }
 }
 
@@ -181,7 +182,7 @@ void OscillatorObject::process(const MultichannelBuffer& input_buffer, Multichan
         if (sync.read_gate_state(input_buffer[1][n]) & GateState::just_opened)
             phase = 0;
 
-        output_buffer[0][n] = std::sin(TAU * phase);
+        output_buffer[0][n] = std::sin(TAU * phase + phase_offset);
 
         phase = phase + frequency / sample_rate;
 
@@ -191,8 +192,9 @@ void OscillatorObject::process(const MultichannelBuffer& input_buffer, Multichan
 
 OscillatorObject::OscillatorObject(const ArgumentList& parameters) :  phase(0)
 {
-    init(2, 1, parameters, {&frequency} );
+    init(3, 1, parameters, { &frequency, &phase_offset } );
     link_value(&frequency, frequency, 0);
+    link_value(&phase_offset, phase_offset, 2);
 }
 
 
@@ -266,7 +268,7 @@ void ComparatorObject::process(const MultichannelBuffer& input_buffer, Multichan
 {
     for (size_t n = 0; n < AudioBuffer::blocksize; n++) {
         update_parameters(n);
-        
+
         if (input_buffer[0][n] > value) output_buffer[0][n] = 1.f;
         else output_buffer[0][n] = 0.f;
     }
@@ -282,9 +284,10 @@ ComparatorObject::ComparatorObject(const ArgumentList& parameters)
 void TimerObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
 {
     for (size_t n = 0; n < AudioBuffer::blocksize; n++) {
+        if (reset.read_gate_state(input_buffer[0][n]) & GateState::just_opened) value = 0.f;
+
         output_buffer[0][n] = value;
         value += 1.f / sample_rate;
-        if (reset.read_gate_state(input_buffer[0][n]) & GateState::just_opened) value = 0.f;
     }
 }
 
@@ -417,8 +420,9 @@ void EnvelopeObject::process(const MultichannelBuffer& input_buffer, Multichanne
 
         if (trigger.read_gate_state(input_buffer[0][n]) & GateState::just_opened) time = 0;
         if (time > length) time = (int) length;
-    
-        const float ratio = float(time) / (length + 0.001f);
+        if (length == 0.f) length = std::numeric_limits<float>::min();
+
+        const float ratio = float(time) / length;
         output_buffer[0][n] = (1-ratio) * start + ratio * end;
         time++;
     }
@@ -667,73 +671,59 @@ ConvolveObject::ConvolveObject(const ArgumentList& parameters)
     signal.resize_stream(impulse_response.size());
 }
 
-void ZPlaneObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+
+void PoleObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
 {
     for (size_t n = 0; n < AudioBuffer::blocksize; n++) {
-        x[0] = input_buffer[0][n];
-        output_buffer[0][n] = y[0] = (x[0] + b1*x[-1] + b2*x[-2] - a1*y[-1] - a2*y[-2]);
-        x.increment_pointer();
+        update_parameters(n);
+
+        if (position.imag() == 0.f) {
+            a2 = 0;
+            a1 = -position.real();
+        }
+        else {
+            a1 = -2.f * position.magnitude() * std::cos(position.angle());
+            a2 = position.magnitude() * position.magnitude();
+        }
+
+        output_buffer[0][n] = y[0] = input_buffer[0][n] - a1*y[-1] - a2*y[-2];
         y.increment_pointer();
     }
 }
 
-ZPlaneObject::ZPlaneObject(const ArgumentList& parameters)
-: x(4), y(4)
-{
-    set_io(1, 1);
-    if (parameters.size() > 0) zero = parameters[0].get_value<Number>();
-    if (parameters.size() > 1) pole = parameters[1].get_value<Number>();
-    x.resize_stream(4);
-    y.resize_stream(4);
-
-    if (zero.magnitude()) {
-        b1 = -2.f * zero.magnitude() * std::cos(zero.angle());
-        b2 = zero.magnitude() * zero.magnitude();
-    }
-
-    if (pole.magnitude()) {
-        a1 = -2.f * pole.magnitude() * std::cos(pole.angle());
-        a2 = pole.magnitude() * pole.magnitude();
-    }
-}
-
-
-void PoleObject::process(const MultichannelBuffer& x, MultichannelBuffer& y)
-{
-    update_parameters(0);
-
-    y[0][0] = x[0][0] + a*last_value;
-    for (size_t n = 1; n < AudioBuffer::blocksize; n++) {
-        update_parameters(n);
-
-        y[0][n] = x[0][n] + a*y[0][n-1];
-    }
-    last_value = y[0][AudioBuffer::blocksize - 1];
-}
-
 PoleObject::PoleObject(const ArgumentList& parameters)
 {
-    init(2, 1, parameters, { &a });
-    link_value(&a, a, 1);
+    set_io(3, 1);
+    if (parameters.size()) position = parameters[0].get_value<Number>();
+
+    link_value(&position.real(), position.real(), 1);
+    link_value(&position.imag(), position.imag(), 2);
+    y.resize_stream(4);
 }
 
 
-void ZeroObject::process(const MultichannelBuffer& x, MultichannelBuffer& y)
+void ZeroObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
 {
-    update_parameters(0);
-    y[0][0] = x[0][0] + b*last_value;
-    for (size_t n = 1; n < AudioBuffer::blocksize; n++) {
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++) {
         update_parameters(n);
-        y[0][n] = x[0][n] + b*x[0][n-1];
-    }
 
-    last_value = x[0][AudioBuffer::blocksize - 1];
+        b1 = -2.f * position.magnitude() * std::cos(position.angle());
+        b2 = position.magnitude() * position.magnitude();
+        
+        x[0] = input_buffer[0][n];
+        output_buffer[0][n] = x[0] + b1*x[-1] + b2*x[-2];
+        x.increment_pointer();
+    }
 }
 
 ZeroObject::ZeroObject(const ArgumentList& parameters)
 {
-    init(2, 1, parameters, { &b });
-    link_value(&b, b, 1);
+    set_io(3, 1);
+    if (parameters.size()) position = parameters[0].get_value<Number>();
+
+    link_value(&position.real(), position.real(), 1);
+    link_value(&position.imag(), position.imag(), 2);
+    x.resize_stream(4);
 }
 
 void BiToUnipolarObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
@@ -748,5 +738,157 @@ BiToUnipolarObject::BiToUnipolarObject(const ArgumentList&)
 }
 
 
+
+
+
+void CeilObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+{
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++)
+        output_buffer[0][n] = std::ceil(input_buffer[0][n]);
 }
 
+CeilObject::CeilObject(const ArgumentList&)
+{
+    set_io(1, 1);
+}
+
+void SinObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+{
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++)
+        output_buffer[0][n] = std::sin(input_buffer[0][n]);
+}
+
+SinObject::SinObject(const ArgumentList&)
+{
+    set_io(1, 1);
+}
+
+void CosObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+{
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++)
+        output_buffer[0][n] = std::cos(input_buffer[0][n]);
+}
+
+CosObject::CosObject(const ArgumentList&)
+{
+    set_io(1, 1);
+}
+
+void ClampObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+{
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++) {
+        update_parameters(n);
+        output_buffer[0][n] = std::clamp(input_buffer[0][n], min, max);
+    }
+}
+
+ClampObject::ClampObject(const ArgumentList& parameters)
+{
+    init(3, 1, parameters, { &min, &max });
+    link_value(&min, min, 1);
+    link_value(&max, max, 2);
+}
+
+
+void ReciprocalObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+{
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++)
+        output_buffer[0][n] = 1.f / input_buffer[0][n];
+}
+
+ReciprocalObject::ReciprocalObject(const ArgumentList&)
+{
+    set_io(1, 1);
+}
+
+void InverseObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+{
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++)
+        output_buffer[0][n] = -input_buffer[0][n];
+}
+
+InverseObject::InverseObject(const ArgumentList&)
+{
+    set_io(1, 1);
+}
+
+
+
+
+
+
+void SignObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+{
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++) {
+        output_buffer[0][n] = input_buffer[0][n] >= 0 ? 1 : -1;
+    }
+}
+
+SignObject::SignObject(const ArgumentList&)
+{
+    set_io(1, 1);
+}
+
+void LogarithmObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+{
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++) {
+        update_parameters(n);
+        output_buffer[0][n] = std::log(input_buffer[0][n]) / std::log(base);
+    }
+}
+
+LogarithmObject::LogarithmObject(const ArgumentList& parameters)
+{
+    init(2, 1, parameters, { &base });
+    link_value(&base, base, 1);
+}
+
+void ExponentialObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+{
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++) {
+        update_parameters(n);
+        output_buffer[0][n] = std::pow(base, input_buffer[0][n]);
+    }
+}
+
+ExponentialObject::ExponentialObject(const ArgumentList& parameters)
+{
+    init(2, 1, parameters, { &base });
+    link_value(&base, base, 1);
+}
+
+void AtanObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+{
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++) {
+        output_buffer[0][n] = std::atan(input_buffer[0][n]);
+    }
+}
+
+AtanObject::AtanObject(const ArgumentList&)
+{
+    set_io(1, 1);
+}
+
+
+
+void PhasorObject::process(const MultichannelBuffer& input_buffer, MultichannelBuffer& output_buffer)
+{
+    for (size_t n = 0; n < AudioBuffer::blocksize; n++) {
+        update_parameters(n);
+        if (sync.read_gate_state(input_buffer[1][n]) & GateState::just_opened)
+            phase = 0;
+
+        output_buffer[0][n] = phase + phase_offset;
+        phase += 1.0 / period;
+        if (phase >= 1.0) { phase -= 1.0; }
+    }
+}
+
+PhasorObject::PhasorObject(const ArgumentList& parameters) :  phase(0)
+{
+    init(3, 1, parameters, { &period, &phase_offset } );
+    link_value(&period, period, 0);
+    link_value(&phase_offset, phase_offset, 2);
+}
+
+}

@@ -13,7 +13,6 @@ using namespace emscripten;
 using namespace Volsung;
 
 Program prog;
-bool mono;
 
 int main(int argc, char ** argv)
 {
@@ -24,27 +23,6 @@ int main(int argc, char ** argv)
         EM_ASM_({
             set_length($0);
         }, (float) arguments[0].get_value<Number>());
-    });
-
-    Program::add_directive("log", [] (std::vector<TypedValue> arguments, Program*) {
-        if (arguments[0].is_type<Number>()) Volsung::log( (Text) arguments[0].get_value<Number>());
-        if (arguments[0].is_type<Text>()) Volsung::log(arguments[0].get_value<Text>());
-        if (arguments[0].is_type<Sequence>()) {
-            Volsung::log((Text) arguments[0].get_value<Sequence>());
-        }
-        std::cout << std::flush;
-    });
-
-    Program::add_directive("mono", [] (std::vector<TypedValue> arguments, Program*) {
-        EM_ASM_({
-            set_mono();
-        });
-    });
-
-    Program::add_directive("stereo", [] (std::vector<TypedValue> arguments, Program*) {
-        EM_ASM_({
-            unset_mono();
-        });
     });
 }
 
@@ -58,7 +36,17 @@ bool parse(std::string code)
         if (do_thing) output[0][0] = 1;
         do_thing = false;
     });
-    return parser.parse_program(prog);
+    const bool result = parser.parse_program(prog);
+
+    if (result) {
+        const bool mono = !prog.get_audio_object_raw_pointer<AudioOutputObject>("output")->is_connected(1);
+
+        EM_ASM_({
+            mono = $0;
+        }, mono);
+    }
+    
+    return result;
 }
 
 void run()

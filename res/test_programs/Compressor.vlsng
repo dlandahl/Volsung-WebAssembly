@@ -1,0 +1,31 @@
+
+Max_Zero <1, 1>: {
+    ; Essentially a negative half-wave rectifier.
+
+    input -> Comparator~ 0 -> Inverse~ -> +1 -> 1|gate: Multiply~
+    input -> gate -> output
+}
+
+Compressor <1, 1>: {
+    ; The compression is quite strong just to make it clear
+    ratio: 2.6
+    threshold: -20
+
+    slope: 1 - 1 / ratio
+
+    input -> Envelope_Follower~ 4ms, 20ms
+    -> Log~ 10 -> *20
+    -> Inverse~ -> +threshold -> *slope -> Max_Zero~
+    -> *0.05 -> Exponentiate~ 10 
+    -> 1|gain: Multiply~
+
+    input -> gain -> output
+}
+
+path: "files/drumbeat"
+
+Read_File~ path
+-> Compressor~
+-> output
+
+&length length_of(read_file(path))

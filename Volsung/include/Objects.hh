@@ -103,7 +103,8 @@ class OscillatorObject : public AudioObject
     void  process(const MultichannelBuffer&, MultichannelBuffer&) override;
 
     GateListener sync;
-    float phase     = 0;
+    double phase     = 0;
+    float phase_offset = 0;
     float frequency = 100;
 
 public:
@@ -115,7 +116,7 @@ class SquareObject : public AudioObject
     void  process(const MultichannelBuffer&, MultichannelBuffer&) override;
 
     float pw        = 0.0;
-    float phase     = 0;
+    double phase     = 0;
     float frequency = 100;
 
 public:
@@ -285,7 +286,7 @@ public:
 
 class SawObject : public AudioObject
 {
-    float phase = -1;
+    double phase = -1;
     float frequency;
     GateListener sync;
 
@@ -296,7 +297,7 @@ public:
 
 class TriangleObject : public AudioObject
 {
-    float phase = 0;
+    double phase = 0;
     float frequency;
     GateListener sync;
 
@@ -392,23 +393,12 @@ public:
     ConvolveObject(const ArgumentList&);
 };
 
-class ZPlaneObject : public AudioObject
-{
-    void process(const MultichannelBuffer&, MultichannelBuffer&) override;
-    float a1, a2, b1, b2;
-    Number pole = 0;
-    Number zero = 0;
-    
-    CircularBuffer x, y;
-    
-public:
-    ZPlaneObject(const ArgumentList&);
-};
-
 class PoleObject : public AudioObject
 {
-    float a = 0;
-    float last_value = 0.f;
+    float a1 = 0;
+    float a2 = 0;
+    Number position;
+    CircularBuffer y;
     void process(const MultichannelBuffer&, MultichannelBuffer&) override;
 
 public:
@@ -417,8 +407,11 @@ public:
 
 class ZeroObject : public AudioObject
 {
-    float b = 0;
-    float last_value = 0.f;
+    float b1 = 0;
+    float b2 = 0;
+    Number position;
+    CircularBuffer x;
+
     void process(const MultichannelBuffer&, MultichannelBuffer&) override;
 
 public:
@@ -434,5 +427,109 @@ public:
     BiToUnipolarObject(const ArgumentList&);
 };
 
+
+
+
+class CeilObject : public AudioObject
+{
+    void process(const MultichannelBuffer&, MultichannelBuffer&) override;
+
+public:
+    CeilObject(const ArgumentList&);
+};
+
+class CosObject : public AudioObject
+{
+    void process(const MultichannelBuffer&, MultichannelBuffer&) override;
+
+public:
+    CosObject(const ArgumentList&);
+};
+
+class SinObject : public AudioObject
+{
+    void process(const MultichannelBuffer&, MultichannelBuffer&) override;
+
+public:
+    SinObject(const ArgumentList&);
+};
+
+class ClampObject : public AudioObject
+{
+    void process(const MultichannelBuffer&, MultichannelBuffer&) override;
+    float min;
+    float max;
+public:
+    ClampObject(const ArgumentList&);
+};
+
+class ReciprocalObject : public AudioObject
+{
+    void process(const MultichannelBuffer&, MultichannelBuffer&) override;
+
+public:
+    ReciprocalObject(const ArgumentList&);
+};
+
+class InverseObject : public AudioObject
+{
+    void process(const MultichannelBuffer&, MultichannelBuffer&) override;
+    float offset;
+public:
+    InverseObject(const ArgumentList&);
+};
+
+
+
+
+
+
+class SignObject : public AudioObject
+{
+    void process(const MultichannelBuffer&, MultichannelBuffer&) override;
+
+public:
+    SignObject(const ArgumentList&);
+};
+
+class LogarithmObject : public AudioObject
+{
+    void process(const MultichannelBuffer&, MultichannelBuffer&) override;
+    float base = 2.71828182846;
+
+public:
+    LogarithmObject(const ArgumentList&);
+};
+
+class ExponentialObject : public AudioObject
+{
+    void process(const MultichannelBuffer&, MultichannelBuffer&) override;
+    float base = 2.71828182846;
+
+public:
+    ExponentialObject(const ArgumentList&);
+};
+
+class AtanObject : public AudioObject
+{
+    void process(const MultichannelBuffer&, MultichannelBuffer&) override;
+
+public:
+    AtanObject(const ArgumentList&);
+};
+
+
+class PhasorObject : public AudioObject
+{
+    void  process(const MultichannelBuffer&, MultichannelBuffer&) override;
+
+    GateListener sync;
+    double phase     = 0;
+    float phase_offset = 0;
+    float period = sample_rate;
+
+public:
+    PhasorObject(const ArgumentList&);
+};
 
 }

@@ -20,7 +20,7 @@ Note that without the parentheses, the exponentiation would take precendence ove
 Sequences can also be subscript with other sequences. In this case, the second sequence is used as a set of indices into the first sequence, returning a third. Here's an example:
 <pre>; Results in { 100, 200, 300, 200, 100 }\nhundreds: { 100, 200, 300, 400 }\n&log hundreds[{ 0, 1, 2, 1, 0 }]</pre>
 
-<br/><br/><h3>Connections</h3>
+<br/><h3>Connections</h3>
 Once several objects have been created, they can be connected together to form a graph. The basic connection operator <code>-></code> connects two objects together. In the following example, a sine wave signal is generated, attenuated by a factor of 0.5 (6 decibels) and the data is written to a file on disk:
 <pre>source: Sine_Oscillator 440\ndisk: File~ "output.raw"\ngain: Multiply~ 0.5\nsource -> gain -> disk</pre>
 Be aware that the File~ object is not able to write files in the browser-based interpreter, and can only access the preloaded files in <code>files/</code>. See the vocoder demo for an example.<br/>Instead of declaring every individual object, objects can also be created inline, within a connection statement using just object literals. These objects will be anonymous, and cannot be referred to again later in the program:
@@ -51,14 +51,6 @@ Subgraphs are a way of creating custom object types. Sometimes, a certain subset
 }
 </pre>
 <code>_1</code> and <code>_2</code> are symbols into which the positional parameters of the object definition are substituted. Thereby, the above code creates an oscillator for which both the volume and the frequency can be specified using parameters. The new custom object type can now be used like any regular built-in object: <code>My_Subgraph~ 440, 0.5 -> output</code>. Definitions which are outside the subgraph are not visible from within, so any data which needs to be moved into-or-out-of the subgraph has to use the <code>input</code> and <code>output</code> objects which are created implicitly. These io objects have a number of ports as specified on the left-hand-side of the subgraph definition. The subgraph above has no output ports on the <code>input</code> object, and one input port on the <code>output</code> object.
-
-<br/><br/><h3>Directives</h3>
-The web interpreter provides a few special directives, which can be accessed using the ampersand character <code>&</code>. <code>&stereo</code> will make the program output stereo, and <code>&length</code> expects an expression describing the length of audio playback in samples.
-<pre>&stereo
-&length 4s
-Sine_Oscillator~ 400 -> 0|output
-Sine_Oscillator~ 500 -> 1|output
-</pre>
 
 <br/>
 That's all for now. More language features, performance improvements, documentation, and front-ends will be added soon. Please <a href="mailto:landahl2014@gmail.com">contact me</a> with problems, suggestions, criticisms.<br/><br/>

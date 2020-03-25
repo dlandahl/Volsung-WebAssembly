@@ -19,4 +19,3 @@ Sine_Oscillator~ modulator_f
 ; Have the modulation index increase proportional to
 ; the square of the elapsed time
 Timer~ -> ^2 -> *100 -> 1|index
-

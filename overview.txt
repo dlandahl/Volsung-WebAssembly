@@ -15,4 +15,10 @@ Volsung employs the data-flow programming paradigm. Data-flow programming is bas
 <br/><br/><h3>Front-ends</h3>
 
 Deployment through a wide range of existing technologies is planned, including Steinberg VST, VCVRack module, Unreal engine, Unity3D, Audiokinetic Wwise plugin, and Eurorack hardware.<br/><br/>
+
+<b>x64 Binaries:</b><br/>
+<a href="./binaries/Volsung_Player_linux" download>Linux</a>
+<a href="./binaries/Volsung_Player_mac" download>MacOS</a>
+<a href="./binaries/Volsung_Player.exe" download>Windows</a>
+<br/>
 `;
