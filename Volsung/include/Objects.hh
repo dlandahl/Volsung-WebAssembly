@@ -457,8 +457,8 @@ public:
 class ClampObject : public AudioObject
 {
     void process(const MultichannelBuffer&, MultichannelBuffer&) override;
-    float min;
-    float max;
+    float min = 0.f;
+    float max = 1.f;
 public:
     ClampObject(const ArgumentList&);
 };
@@ -530,6 +530,18 @@ class PhasorObject : public AudioObject
 
 public:
     PhasorObject(const ArgumentList&);
+};
+
+
+
+class InvokeObject : public AudioObject
+{
+    void  process(const MultichannelBuffer&, MultichannelBuffer&) override;
+
+    Procedure::Implementation function;
+
+public:
+    InvokeObject(const ArgumentList&);
 };
 
 }

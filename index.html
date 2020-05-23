@@ -37,11 +37,11 @@
       }
 
       button {
-          height: 3%;
+          height: 30px;
       }
 
       select {
-          height: 3%;
+          height: 30px;
       }
 
       @font-face {
@@ -84,10 +84,10 @@
 
       .text {
           width: 100%;
-          height: 74.6%;
+          height: 74%;
           margin: 0 auto;
           padding: 10px;
-          border-radius: 0.3%;
+          border-radius: 10px;
           font-size: 100%;
           background-color: #ddd;
           color: #333;
@@ -125,13 +125,13 @@
       code {
           font-family: Fira mono;
           background: #ccc;
-          border-radius: 1.3%;
+          border-radius: 3px;
       }
 
       pre {
           font-family: Fira mono;
           background: #ddd;
-          border-radius: 0.3%;
+          border-radius: 3px;
           word-spacing: 0px;
       }
 
@@ -145,7 +145,7 @@
           outline: none;
           cursor: pointer;
           padding: 14px 16px;
-          height: 5%;
+          height: 55px;
           font-size: 17px;
           float: left;
       }
@@ -185,11 +185,12 @@
         <div class="tab">
           <button class="tablinks" onclick="select_tab('overview')">Overview</button>
           <button class="tablinks" onclick="select_tab('tutorial')">Tutorial</button>
-          <!-- <button class="tablinks" onclick="select_tab('downloads')">Downloads</button> -->
+          <button class="tablinks" onclick="select_tab('reference')">Reference</button>
         </div>
         <script src="overview.txt"></script>
         <script src="tutorial.txt"></script>
-        <script src="downloads.txt"></script>
+        <script src="reference.txt"></script>
+        <script src="deployment.txt"></script>
         <div class="text" id="main_text"></div>
       </div>
       <div class="column">
@@ -197,11 +198,11 @@
         <select id="preset" onchange="load_preset();">
           <option value="Tone_Generator">Tone Generator</option>
           <option value="Frequency_Modulation">Frequency Modulation</option>
+          <option value="Fourier_Transform">Fourier Analysis</option>
           <option value="Swarm_Generator">Swarm Generator</option>
           <option value="Compressor">Dynamics Processing</option>
           <option value="Vocoder">Vocoder</option>
           <option value="Reverb">Reverberation</option>
-          <option value="Granular_Synthesis">Granular Synthesis</option>
           <option value="Karplus_Strong">Physical Modeling</option>
           <option value="Empty">Empty</option>
         </select><br/><br/>
@@ -261,7 +262,7 @@
           },
           'print': function(message) { log(message); }
       };
-      
+
       var audio_context = new (window.AudioContext || window.webkitAudioContext)();
       var source = audio_context.createBufferSource();
 
@@ -332,7 +333,8 @@
           var text = document.getElementById("main_text");
           if (tab_name == 'tutorial') text.innerHTML = TUTORIAL;
           if (tab_name == 'overview') text.innerHTML = OVERVIEW;
-          if (tab_name == 'downloads') text.innerHTML = DOWNLOADS;
+          if (tab_name == 'deployment') text.innerHTML = DEPLOYMENT;
+          if (tab_name == 'reference') text.innerHTML = REFERENCE;
       }
 
       select_tab('overview');
@@ -350,7 +352,6 @@
 
       load_preset("tone");
     </script>
-    <script src="a.out.js?version=1042"></script>
+    <script src="a.out.js"></script>
 </body>
 </html>
-

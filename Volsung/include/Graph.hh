@@ -17,8 +17,21 @@ namespace Volsung {
 enum class Type {
     number,
     text,
-    sequence
+    sequence,
+    procedure
 };
+
+inline std::string type_name(Type type)
+{
+    switch (type) {
+        case(Type::number): return "Number"; 
+        case(Type::text): return "Text";
+        case(Type::sequence): return "Sequence";
+        case(Type::procedure): return "Procedure";
+   }
+   return "";
+}
+
 
 enum class ConnectionType {
     one_to_one,
@@ -33,6 +46,7 @@ class TypedValue;
 class Text;
 class Sequence;
 class AudioObject;
+class Program;
 
 class Number
 {
@@ -60,6 +74,8 @@ public:
     TypedValue multiply(const TypedValue&);
     TypedValue divide(const TypedValue&);
     TypedValue exponentiate(const TypedValue&);
+
+    Number negated() const;
 
     Number add_num(const Number&) const;
     Number subtract_num(const Number&) const;
@@ -115,7 +131,33 @@ public:
     Sequence(const std::vector<float>&);
 };
 
-using TypedValueBase = std::variant<Number, Text, Sequence>;
+using ArgumentList = std::vector<TypedValue>;
+class Procedure
+{
+public:
+    using Implementation = std::function<TypedValue(const ArgumentList&, Program*)>;
+    Implementation implementation;
+
+    const size_t min_arguments;
+    const size_t max_arguments;
+    const bool can_be_mapped;
+
+    TypedValue operator()(const ArgumentList&, Program*) const;
+    Procedure(Implementation, size_t, size_t, bool = false);
+
+    Procedure& operator=(const Procedure& proc) {
+        *this = proc;
+        return *this;
+    }
+
+    Procedure(const Procedure& proc) : min_arguments(proc.min_arguments),
+                                       max_arguments(proc.max_arguments),
+                                       can_be_mapped(proc.can_be_mapped) {
+        implementation = proc.implementation;
+    }
+};
+
+using TypedValueBase = std::variant<Number, Text, Sequence, Procedure>;
 class TypedValue : private TypedValueBase
 {
     using TypedValueBase::TypedValueBase;
@@ -154,10 +196,10 @@ inline std::string type_debug_name<Text>() { return "Text"; }
 template<>
 inline std::string type_debug_name<Sequence>() { return "Sequence"; }
 
+template<>
+inline std::string type_debug_name<Procedure>() { return "Procedure"; }
 
-class Program;
 
-using ArgumentList = std::vector<TypedValue>;
 using DirectiveFunctor = std::function<void(const ArgumentList&, Program* const)>;
 using AudioProcessingCallback = std::function<void(const MultichannelBuffer&, MultichannelBuffer&, std::any)>;
 using SubgraphRepresentation = std::pair<const std::string, const std::array<float, 2>>;
@@ -165,20 +207,6 @@ using SubgraphRepresentation = std::pair<const std::string, const std::array<flo
 template <class T>
 using SymbolTable = std::map<std::string, T>;
 using Frame = std::vector<float>;
-
-
-class Procedure
-{
-    using Implementation = std::function<TypedValue(const ArgumentList&, const Program*)>;
-    Implementation implementation;
-
-public:
-    const size_t min_arguments;
-    const size_t max_arguments;
-    const bool can_be_mapped;
-    TypedValue operator()(const ArgumentList&, const Program*) const;
-    Procedure(Implementation, size_t, size_t, bool = false);
-};
 
 
 /*

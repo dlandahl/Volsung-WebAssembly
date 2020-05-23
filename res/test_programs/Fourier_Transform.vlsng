@@ -1,0 +1,15 @@
+
+; Have a certain number of data points
+N: 16
+
+; Generate a component at half nyquist and one at DC
+data: {0, 1, 0, -1}.repeat(N / 4) + 1
+
+; Generate a Hann window
+window: sin(pi*(0..(N-1)) / N)^2
+
+; Analyse it and take the lower half - we don't need to print the aliases.
+spectrum: (data * window).DFT()[0..N / 2]
+
+; Display the magnitude spectrum
+print("Magnitudes: ", spectrum.abs())
