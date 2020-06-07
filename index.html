@@ -46,7 +46,7 @@
 
       @font-face {
           font-family: norse;
-          src: url(res/Norse.otf);
+          src: url(res/NotoSans-Medium.otf);
       }
 
       @font-face {
@@ -69,13 +69,14 @@
       }
 
       h1 {
-          font-family: norse;
-          font-size: 530%;
+          font-family: noto;
+          font-size: 420%;
           color: #333;
           font-weight: 900;
           float: left;
-          margin: 0 auto;
-          padding: 0 auto;
+          margin: 0;
+          padding: 0;
+          padding-left: 20;
       }
 
       h2 {
@@ -116,7 +117,7 @@
       }
 
       .header_text {
-          font-size: 140%;
+          font-size: 130%;
           position: relative;
           color: #222;
           top: 55%;
@@ -171,7 +172,7 @@
   <body>
     <div class="fademe"></div>
     <div class="header">
-      <h1>&nbsp;Volsung</h1>
+      <h1>Volsung</h1>
       <div class="header_text">&nbsp;&nbsp;&nbsp;
         A computer language for generating and processing audio
       </div>
@@ -242,9 +243,9 @@
       var datar = [ 0 ];
       var length = 44100;
       var mono = true;
-      
+
       function set_length(x) { length = x; }
-      
+
       function add_to_data(x, y) {
           datal.push(x);
           datar.push(y);
@@ -277,11 +278,11 @@
               document.getElementById("interp").disabled = false;
               document.getElementById("indicator").innerHTML = "WASM is ready.";
               log("========== Finished ==========");
-              
+
               return;
           }
           log("Parsed successfully");
-          
+
           setTimeout(function() { 
               for (var n = 0; n < length / 64; n++) {
                   Module.run();

@@ -7,7 +7,7 @@
 #include <emscripten/bind.h>
 #include <emscripten.h>
 
-#include "VolsungHeader.hh"
+#include "Volsung.hh"
 
 using namespace emscripten;
 using namespace Volsung;
@@ -16,7 +16,7 @@ Program prog;
 
 int main(int argc, char ** argv)
 {
-    debug_callback = [] (std::string message) { std::cout << message << std::endl; };
+    set_debug_callback([] (std::string message) { std::cout << message << std::endl; });
     prog.configure_io(1, 2);
     
     Program::add_directive("length", [] (std::vector<TypedValue> arguments, Program*) {

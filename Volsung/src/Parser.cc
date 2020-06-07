@@ -73,6 +73,8 @@ Token Lexer::get_next_token()
         case ':': return { TokenType::colon, "" };
         case ',': return { TokenType::comma, "" };
         case '&': return { TokenType::ampersand, "" };
+        case '%': return { TokenType::percent, "" };
+        case '`': return { TokenType::backtick, "" };
         case '*': return { TokenType::asterisk, "" };
         case '+': return { TokenType::plus, "" };
         case '/': return { TokenType::slash, "" };
@@ -122,6 +124,7 @@ Token Lexer::get_next_token()
         return { TokenType::string_literal, string };
     }
 
+    if (current() == EOF || current() == -1) return { TokenType::eof, "" };
     error("Unrecognised Token: " + std::string(1, current()));
     return { TokenType::invalid, "" };
 }
@@ -161,7 +164,7 @@ bool Lexer::peek_expression()
     return peek(TokenType::numeric_literal) || peek(TokenType::minus)
         || peek(TokenType::string_literal)  || peek(TokenType::open_brace)
         || peek(TokenType::open_paren)      || peek(TokenType::identifier)
-        || peek(TokenType::vertical_bar);
+        || peek(TokenType::vertical_bar)    || peek(TokenType::backtick);
 }
 
 bool Lexer::peek_connection()
@@ -256,8 +259,8 @@ static void try_add_symbol(const std::string& name, const TypedValue& value, Gra
 bool Parser::parse_program(Graph& graph)
 {
     program = &graph;
-    try_add_symbol("sample_rate", sample_rate, program);
-    try_add_symbol("fs", sample_rate, program);
+    try_add_symbol("sample_rate", get_sample_rate(), program);
+    try_add_symbol("fs", get_sample_rate(), program);
     try_add_symbol("tau", TAU, program);
     try_add_symbol("pi", TAU / 2.f, program);
     try_add_symbol("true", 1, program);
@@ -287,7 +290,7 @@ bool Parser::parse_program(Graph& graph)
             else if (peek(TokenType::less_than)) parse_subgraph_declaration();
             else {
                 next_token();
-                error("Expected colon or connection operator, got " + debug_names.at(current_token.type));
+                error("Expected operator or colon, got " + debug_names.at(current_token.type));
             }
         }
 
@@ -719,7 +722,7 @@ TypedValue Parser::parse_power()
 TypedValue Parser::parse_unary_postfix()
 {
     TypedValue value = parse_factor();
-    while (peek(TokenType::open_bracket) || peek(TokenType::dot)) {
+    while (peek(TokenType::open_bracket) || peek(TokenType::dot) || peek(TokenType::open_paren)) {
         if (peek(TokenType::open_bracket)) {
             expect(TokenType::open_bracket);
             if (!value.is_type<Sequence>()) error("Attempted to subscript non-sequence");
@@ -745,11 +748,16 @@ TypedValue Parser::parse_unary_postfix()
 
             else error("Index into sequence must be a number or a sequence");
         }
+        else if (peek(TokenType::open_paren)) {
+            if (!value.is_type<Procedure>()) error("Attempted to call non-procedure. Value is: " + value.as_string());
+            value = parse_procedure_call(value);
+        }
         else {
             expect(TokenType::dot);
             expect(TokenType::identifier);
-            const std::string id = current_token.value;
-            value = parse_procedure_call(id, value, true);
+            TypedValue param = value;
+            value = parse_identifier();
+            value = parse_procedure_call(value, param, true);
         }
     }
     return value;
@@ -758,17 +766,11 @@ TypedValue Parser::parse_unary_postfix()
 TypedValue Parser::parse_factor()
 {
     TypedValue value = 0;
-    switch (current_token.type) {
-        case TokenType::identifier: {
-            const std::string id = current_token.value;
-            if (peek(TokenType::open_paren)) value = parse_procedure_call(id);
-            else if (program->symbol_exists(id)) value = program->get_symbol_value(id);
-            else if (Program::procedures.count(id)) value = Program::procedures.at(id);
-            else error("Symbol not found: " + id);
-            break;
-        }
 
-        case TokenType::numeric_literal: value = parse_number(); break;
+    switch (current_token.type) {
+        case TokenType::backtick:
+        case TokenType::identifier:      value = parse_identifier();  break;
+        case TokenType::numeric_literal: value = parse_number();      break;
         case TokenType::string_literal:  value = current_token.value; break;
 
         case TokenType::open_paren:
@@ -810,20 +812,24 @@ TypedValue Parser::parse_factor()
                 if (current() == '{') num_braces_encountered++;
             }
 
-            position--;
             const std::string expression_text = source_code.substr(start_position, position - start_position);
-            expect(TokenType::close_brace);
+            position--;
 
-            Procedure::Implementation impl = [ids, expression_text] (const ArgumentList& args, Program*) {
-                Graph graph;
+            expect(TokenType::close_brace);
+            Program* parent = program;
+
+            Procedure::Implementation impl = [ids, expression_text, parent] (const ArgumentList& args, Program*) {
+                Program* program = new Program;
+                program->parent = parent;
 
                 for (size_t n = 0; n < args.size() && n < ids.size(); n++)
-                    graph.add_symbol(ids[n], args[n]);
+                    program->add_symbol(ids[n], args[n]);
 
                 Parser parser;
-                parser.parse_program(graph);
+                parser.parse_program(*program);
                 parser.source_code = expression_text;
                 parser.next_token();
+                if (parser.current_token.type == TokenType::eof) return TypedValue(0);
                 return parser.parse_expression();
             };
 
@@ -854,13 +860,17 @@ Number Parser::parse_number()
     bool imaginary = false;
     if (peek(TokenType::identifier)) {
         next_token();
-        if (current_token.value == "s")       multiplier = sample_rate;
-        else if (current_token.value == "ms") multiplier = sample_rate / 1000;
+        if (current_token.value == "s")        multiplier = get_sample_rate();
+        else if (current_token.value == "ms")  multiplier = get_sample_rate() / 1000;
         else if (current_token.value == "deg") multiplier = TAU / 360.0;
-        else if (current_token.value == "i") imaginary = true;
+        else if (current_token.value == "i")   imaginary = true;
         else if (current_token.value == "dB"
               || current_token.value == "db") number = std::log10(number * 20);
         else error("Invalid literal operator or stray identifier");
+    }
+    else if (peek(TokenType::percent)) {
+        next_token();
+        multiplier = 0.01;
     }
 
     if (imaginary) return Number(0, number);
@@ -883,9 +893,10 @@ Sequence Parser::parse_sequence()
     return s;
 }
 
-TypedValue Parser::parse_procedure_call(const std::string& name, TypedValue lhs, bool use_lhs)
+TypedValue Parser::parse_procedure_call(TypedValue value, TypedValue lhs, bool use_lhs)
 {
     ArgumentList arguments;
+    const std::string name = current_token.value;
 
     if (use_lhs) arguments.push_back(lhs);
 
@@ -901,13 +912,7 @@ TypedValue Parser::parse_procedure_call(const std::string& name, TypedValue lhs,
         }
     }
     expect(TokenType::close_paren);
-
-    Procedure procedure = [&name, this] () -> Procedure {
-        if (Program::procedures.count(name)) return Program::procedures.at(name);
-        if (program->symbol_exists(name)) return program->get_symbol_value(name).get_value<Procedure>();
-        error("Procedure does not exist: '" + name + "'");
-        return Program::procedures.at(name);
-    }();
+    Procedure procedure = value.get_value<Procedure>();
 
     if (procedure.max_arguments < arguments.size())
         Volsung::error("Too many arguments in procedure call to '" + name +"'. Expected " + std::to_string(procedure.max_arguments) +", got " + std::to_string(arguments.size()));
@@ -916,6 +921,29 @@ TypedValue Parser::parse_procedure_call(const std::string& name, TypedValue lhs,
         Volsung::error("Too few arguments in procedure call to '" + name +"'. Expected " + std::to_string(procedure.min_arguments) +", got " + std::to_string(arguments.size()));
 
     return procedure(arguments, program);
+}
+
+TypedValue Parser::parse_identifier()
+{
+    Program* old = program;
+    TypedValue value;
+
+    while (current_token.type == TokenType::backtick) {
+        if (!program->parent) error("Attempted to use backtick in top-level program. Only use ` in a subgraph or a function definition");
+        if (program == program->parent) std::cout << "WHAT" << std::endl;
+        program = program->parent;
+        next_token();
+    }
+
+    verify(TokenType::identifier);
+    const std::string id = current_token.value;
+
+    if (program->symbol_exists(id)) value = program->get_symbol_value(id);
+    else if (Program::procedures.count(id)) value = Program::procedures.at(id);
+    else error("Symbol not found: " + id);
+
+    program = old;
+    return value;
 }
 
 bool Parser::line_end() const

@@ -11,7 +11,7 @@ The above code creates a constant <code>frequency</code> and an oscillator which
 The constant is also used as the first parameter in the object definition, which is the frequency of the sine oscillator in the case of the <code>Sine_Oscillator~</code> type of object. Different object types will process their parameters and input data differently, and produce different output data.
 
 <br/><br/><h3>Expressions and sequences</h3>
-The constant from the above code also has the <code>Number</code> data-type associated with it, as it has been inferred from the expression '<code>440</code>'. The other three currently-available data-types are <code>Text</code>, <code>Sequence</code>, and <code>Procedure</code>. Sequence literals consist of curly braces, encapsulating a list of comma-separated expressions which evaluate to Numbers:
+The constant from the above code also has the <code>Number</code> data-type associated with it, as it has been inferred from the expression '<code>440</code>'. The other three currently-available data-types are <code>Text</code>, <code>Sequence</code>, and <code>Function</code>. Sequence literals consist of curly braces, encapsulating a list of comma-separated expressions which evaluate to Numbers:
 <pre>my_number: 100\nmy_sequence: { 0, my_number, 5ms/2, 4^(2/3), { 5 }[0] }</pre>
 The final value consists of a sequence of one value, which has been subscripted with zero, extracting the first value (which leaves the number 5). Naturally, the basic arithmetic operators <code>+, -, *, /, ^</code> can be used to perform arithmetic on literals and identifiers of constants, with the expected associativity and precedence. The third value also uses the literal operator <code>ms</code>. This multiplies the value of the attached numeric literal by <code>fs / 1000</code>, converting from samples to milliseconds. You can also use the literal operator <code>s</code> to convert from samples to seconds.<br/>If a subexpression consisting of an arithmetic operator with a Number operand and a Sequence operand is evaluated, the resulting type is a Sequence, with the arithmetic operation performed on each of its values. Arithmetic sequences (those with a constant difference between consecutive terms) can also be created using shorthand sequence generators, with the following syntax: <code>start_value..end_value|step_size</code>. The vertical bar - step_size are optional, and the common difference will default to one:
 <pre>; Results in { 1, 4, 9, 16 }\nsquares: (1..4)^2\nprint(squares)</pre>
@@ -51,12 +51,12 @@ Subgraphs are a way of creating custom object types. Sometimes, a certain subset
 </pre>
 <code>_1</code> and <code>_2</code> are symbols into which the positional parameters of the object definition are substituted. Thereby, the above code creates an oscillator for which both the volume and the frequency can be specified using parameters. The new custom object type can now be used like any regular built-in object: <code>My_Subgraph~ 440, 0.5 -> output</code>. Definitions which are outside the subgraph are not visible from within, so any data which needs to be moved into-or-out-of the subgraph has to use the <code>input</code> and <code>output</code> objects which are created implicitly. These io objects have a number of ports as specified on the left-hand-side of the subgraph definition. The subgraph above has no output ports on the <code>input</code> object, and one input port on the <code>output</code> object.
 
-<br/><br/><h3>Procedures</h3>
-There are a few procedures built into the language which can be used to help perform tasks such as metaprogramming, maths, and debugging. Procedures are a first class citizen just like numbers, text, and sequences of numbers, and the may be stored and manipulated in the way you would expect to allow higher order functional programs:
+<br/><br/><h3>Functions</h3>
+There are a few functions built into the language which can be used to help perform tasks such as metaprogramming, maths, and debugging. Functions are a first class citizen just like numbers, text, and sequences of numbers, and they may be stored and manipulated in the way you would expect to allow higher order functional programs:
 <pre>my_fun: sqrt
 print(my_fun(4))
 </pre>
-Above, the built-in procedure <code>sqrt</code> is aliased by storing its value into <code>my_fun</code>. Procedures can perform metaprogramming tasks such as evaluating subgraphs and writing the output PCM data into a sequence. This may be used to generate lookup tables for wavetables or impulse responses to save time during audio processing:
+Above, the built-in function <code>sqrt</code> is aliased by storing its value into <code>my_fun</code>. Functions can perform metaprogramming tasks such as evaluating subgraphs and writing the output PCM data into a sequence. This may be used to generate lookup tables for wavetables or impulse responses to save time during audio processing:
 <pre>Program <0, 1>: {
     Noise~ -> output
 }
@@ -64,10 +64,10 @@ Above, the built-in procedure <code>sqrt</code> is aliased by storing its value 
 ; Use the Program~ subgraph to generate 10 samples of data and display it
 run_subgraph("Program", 10).print()
 </pre>
-The <code>.</code> operator simply invokes the procedure to its right with the value to its left as the first argument. This can sometimes make things more readable when many procedure calls are composed.
+The <code>.</code> operator simply invokes the function to its right with the value to its left as the first argument. This can sometimes make things more readable when many function calls are composed.
 <br/><br/>
-The user may also define new procedures in the form of functions. Function literals are made up of a comma-delimited list of identifiers inside a pair of vertical bars, followed by an expression surrounded by curly braces. The identifiers inside the vertical bars are function parameters which may be used in the expression:
-<pre>; A function which takes a procedure and another value as a parameter
+The user may also define new functions in the form of functions. Function literals are made up of a comma-delimited list of identifiers inside a pair of vertical bars, followed by an expression surrounded by curly braces. The identifiers inside the vertical bars are function parameters which may be used in the expression:
+<pre>; A function which takes a function and another value as a parameter
 my_f: |x, f| { x * f(x) }
 print(my_f(0..4, atan))
 </pre>
