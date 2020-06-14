@@ -441,6 +441,24 @@ const SymbolTable<Procedure> Program::procedures = {
         return reverse;
     }, 1, 1)},
 
+    { "concatenate", Procedure([] (const ArgumentList& args, Program*) -> TypedValue {
+        if (args[0].is_type<Sequence>()) {
+            const Sequence a = args[0].get_value<Sequence>();
+            const Sequence b = args[1].get_value<Sequence>();
+
+            Sequence out;
+            for (size_t n = 0; n < a.size() + b.size(); n++) {
+                out.add_element(n < a.size() ? a[n] : b[n-a.size()]);
+            }
+
+            return out;
+        }
+
+        const Text a = args[0].get_value<Text>();
+        const Text b = args[1].get_value<Text>();
+        return (Text) (std::string) a + (std::string) b;
+    }, 2, 2)},
+
     { "map", Procedure([] (const ArgumentList& args, Program* program) {
         const Procedure proc = args[1].get_value<Procedure>();
         const Sequence source = args[0].get_value<Sequence>();

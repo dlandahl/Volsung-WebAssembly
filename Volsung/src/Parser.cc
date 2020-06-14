@@ -64,22 +64,27 @@ Token Lexer::get_next_token()
             position--;
             return { TokenType::dot, "" };
 
-        case '{': return { TokenType::open_brace, "" };
-        case '}': return { TokenType::close_brace, "" };
-        case '(': return { TokenType::open_paren, "" };
-        case ')': return { TokenType::close_paren, "" };
-        case '[': return { TokenType::open_bracket, "" };
-        case ']': return { TokenType::close_bracket, "" };
-        case ':': return { TokenType::colon, "" };
-        case ',': return { TokenType::comma, "" };
-        case '&': return { TokenType::ampersand, "" };
-        case '%': return { TokenType::percent, "" };
-        case '`': return { TokenType::backtick, "" };
-        case '*': return { TokenType::asterisk, "" };
-        case '+': return { TokenType::plus, "" };
-        case '/': return { TokenType::slash, "" };
-        case '^': return { TokenType::caret, "" };
-        case '|': return { TokenType::vertical_bar, "" };
+        case '{':  return { TokenType::open_brace, "" };
+        case '}':  return { TokenType::close_brace, "" };
+        case '(':  return { TokenType::open_paren, "" };
+        case ')':  return { TokenType::close_paren, "" };
+        case '[':  return { TokenType::open_bracket, "" };
+        case ']':  return { TokenType::close_bracket, "" };
+        case ':':  return { TokenType::colon, "" };
+        case ',':  return { TokenType::comma, "" };
+        case '&':  return { TokenType::ampersand, "" };
+        case '%':  return { TokenType::percent, "" };
+        case '`':  return { TokenType::backtick, "" };
+        case '*':  return { TokenType::asterisk, "" };
+        case '+':  return { TokenType::plus, "" };
+        case '/':  return { TokenType::slash, "" };
+        case '^':  return { TokenType::caret, "" };
+        case '|':  return { TokenType::vertical_bar, "" };
+
+        case '\\': {
+            position++;
+            return get_next_token();
+        }
     }
 
     if (is_digit()) {
@@ -129,7 +134,7 @@ Token Lexer::get_next_token()
     return { TokenType::invalid, "" };
 }
 
-char Lexer::current() const
+int Lexer::current() const
 {
     if (position >= source_code.size()) return EOF;
     return source_code.at(position);
@@ -754,7 +759,7 @@ TypedValue Parser::parse_unary_postfix()
         }
         else {
             expect(TokenType::dot);
-            expect(TokenType::identifier);
+            next_token();
             TypedValue param = value;
             value = parse_identifier();
             value = parse_procedure_call(value, param, true);
@@ -796,8 +801,10 @@ TypedValue Parser::parse_factor()
             }
 
             expect(TokenType::vertical_bar);
+            if (peek(TokenType::newline)) next_token();
             expect(TokenType::open_brace);
-
+            if (peek(TokenType::newline)) next_token();
+  
             const size_t start_position = position + 1;
             int num_braces_encountered = 0;
 
@@ -815,6 +822,7 @@ TypedValue Parser::parse_factor()
             const std::string expression_text = source_code.substr(start_position, position - start_position);
             position--;
 
+            if (peek(TokenType::newline)) next_token();
             expect(TokenType::close_brace);
             Program* parent = program;
 
