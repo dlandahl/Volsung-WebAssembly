@@ -1,0 +1,20 @@
+
+let OVERVIEW = `
+<h2>Overview</h2>
+<h3>Introduction</h3>
+
+Volsung is a new language for audio, currently in development. It can be used for sound synthesis, audio effect processing, and procedural game audio. Aimed at sound designers, it prioritises being visual and intuitive while providing language constructs and abstractions that enable readable and terse algorithm specification. Volsung draws inspiration from similar DSP languages such as Miller Puckette's <a href="https://puredata.info">Pure Data</a>, Stanford's <a href="http://chuck.stanford.edu">ChucK</a>, and <a href="https://faust.grame.fr">FAUST</a>, developed at GRAME.
+
+<br/> <br/>
+<h3>Data-flow programming</h3>
+
+Volsung employs the data-flow programming paradigm. Data-flow programming is based around creating directed graphs, the vertices (or nodes) of which represent processes, and the edges (or connections) of which represent data. Each edge holds input data of one process and output data of another. The graph is constructed by declaring audio or logic processing devices (also objects), and connecting them using arrow operators. The basic connection operator <code>-></code> connects an output port on one object to an input port on another.
+<br/> <br/> People with a background in audio may think of this like a modular synthesiser, but where each module only performs a very simple operation, such as generating a single sine wave or applying a single gain value.
+
+<br/><br/>
+<h3>Deployment</h3>
+
+Deployment through a wide range of technologies is planned, including Steinberg VST, VCVRack module, Unreal engine, Unity3D, Audiokinetic Wwise plugin, and Eurorack hardware.
+<br/> <br/>I'm also creating a game in Unity where every sound is synthesised procedurally, as a proof of concept about the potential of using the language in games. <a href="https://youtu.be/26PlUY4Ykm0">Here</a> is a short video that you can skip through to get the idea.<br/><br/>
+
+`;

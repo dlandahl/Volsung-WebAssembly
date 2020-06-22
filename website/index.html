@@ -1,0 +1,359 @@
+<html>
+  <head>
+    <title>Volsung Interpreter</title>
+    <meta content="" charset="UTF-8">
+    <style>
+      .code {
+          resize: none;
+          width: 100%;
+          height: 49%;
+          margin: 0 auto;
+          outline: 8px solid #333;
+          box-shadow: 5px 5px 8px #000;
+      }
+
+      textarea:disabled {
+          outline: 8px solid #333;
+          box-shadow: 5px 5px 8px #000;
+          resize: none;
+          width: 100%;
+          height: 18%;
+          font-size: 100% !important;
+          background-color: #151515;
+          font-family: Fira mono;
+          color: #ddd;
+      }
+
+      body {
+          background-color: #8888a8;
+          background-repeat: no-repeat;
+          background-attachment: fixed;
+          background-position: 50% 50px;
+          background-image: url('res/Sigurd.svg');
+          font-family: noto;
+          font-weight: 500;
+          margin: 0 auto;
+          padding: 0 auto;
+      }
+
+      button {
+          height: 30px;
+      }
+
+      select {
+          height: 30px;
+      }
+
+      @font-face {
+          font-family: norse;
+          src: url(res/NotoSans-Medium.otf);
+      }
+
+      @font-face {
+          font-family: noto;
+          src: url(res/NotoSans-Medium.ttf);
+      }
+
+      .column {
+          float: left;
+          width: 45%;
+          padding: 2.5%;
+          padding-top: 1%;
+          position: relative;
+      }
+
+      .row:after {
+          content: "";
+          display: table;
+          clear: both;
+      }
+
+      h1 {
+          font-family: noto;
+          font-size: 420%;
+          color: #333;
+          font-weight: 900;
+          float: left;
+          margin: 0;
+          padding: 0;
+          padding-left: 20;
+      }
+
+      h2 {
+          font-size: 180%;
+      }
+
+      .text {
+          width: 100%;
+          height: 74%;
+          margin: 0 auto;
+          padding: 10px;
+          border-radius: 10px;
+          font-size: 100%;
+          background-color: #ddd;
+          color: #333;
+          overflow-y: scroll;
+          box-shadow: 1px 1px 5px #333;
+          word-spacing: 4px;
+          line-height: 24px;
+      }
+
+      .header {
+          background-color: #a8a8c8;
+          width: 100%;
+          height: 100px;
+          position: relative;
+          box-shadow: 0 2px 0 #222;
+      }
+
+      .header_img {
+          vertical-align: middle;
+          height: 40px;
+          position: relative;
+          float: right;
+          top: 0px;
+          left: -30px;
+          opacity: 0.8;
+      }
+
+      .header_text {
+          font-size: 130%;
+          position: relative;
+          color: #222;
+          top: 55%;
+      }
+
+      code {
+          font-family: Fira mono;
+          background: #ccc;
+          border-radius: 3px;
+      }
+
+      pre {
+          font-family: Fira mono;
+          background: #ddd;
+          border-radius: 3px;
+          word-spacing: 0px;
+      }
+
+      a {
+          color: #000;
+      }
+
+      .tab button {
+          background-color: #8888a8;
+          border: none;
+          outline: none;
+          cursor: pointer;
+          padding: 14px 16px;
+          height: 55px;
+          font-size: 17px;
+          float: left;
+      }
+
+      label {
+          background-color: #8888a8;
+          padding: 3px 3px;
+          color: #111;
+          font-size: 17px;
+          float: middle;
+      }
+
+      .tablinks {
+          left: 5%;
+          position: relative;
+      }
+
+    </style>
+    <link rel="stylesheet" href="lib/base16-dark.css">
+    <link rel="stylesheet" href="lib/codemirror.css">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Mono&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div class="fademe"></div>
+    <div class="header">
+      <h1>Volsung</h1>
+      <div class="header_text">&nbsp;&nbsp;&nbsp;
+        A computer language for generating and processing audio
+      </div>
+      <div>
+        <a href="https://github.com/long-march/Volsung.git">
+          <img src="res/github.png" class="header_img" style="float: right;"></a>
+      </div>
+    </div>
+    <div class="row">
+      <div class="column">
+        <div class="tab">
+          <button class="tablinks" onclick="select_tab('overview')">Overview</button>
+          <button class="tablinks" onclick="select_tab('tutorial')">Tutorial</button>
+          <button class="tablinks" onclick="select_tab('reference')">Reference</button>
+        </div>
+        <script src="tabs/overview.js"></script>
+        <script src="tabs/tutorial.js"></script>
+        <script src="tabs/reference.js"></script>
+        <script src="tabs/deployment.js"></script>
+        <div class="text" id="main_text"></div>
+      </div>
+      <div class="column">
+        <label for="preset">Example:</label>
+        <select id="preset" onchange="load_preset();">
+          <option value="Tone_Generator">Tone Generator</option>
+          <option value="Frequency_Modulation">Frequency Modulation</option>
+          <option value="Fourier_Transform">Fourier Analysis</option>
+          <option value="Swarm_Generator">Swarm Generator</option>
+          <option value="Compressor">Dynamics Processing</option>
+          <option value="Vocoder">Vocoder</option>
+          <option value="Reverb">Reverberation</option>
+          <option value="Karplus_Strong">Physical Modeling</option>
+          <option value="Ambisonics_HRTFs">Ambisonics / HRTFs</option>
+          <option value="Empty">Empty</option>
+        </select><br/><br/>
+        <div class="code" id="code_editor"></div>
+        <br/><button id="interp" onclick="parse_code()" disabled="true">Interpret</button>
+        <button id="kill" onclick="source.stop()" disabled="true">Stop</button>
+        <label id="indicator">WASM still loading...</label>
+        <br/><br/><textarea id="out" spellcheck="false" disabled="true"></textarea>
+      </div>
+    </div>
+    <script src="lib/codemirror.js"></script>
+    <script src="lib/simple.js"></script>
+    <script>
+
+      CodeMirror.defineSimpleMode("simplemode", {
+          start: [
+              { regex: /\;.*/, token: "comment" },
+              { regex: /(<>|>>|x>|=>|->)/, token: "variable" },
+              { regex: /(true|false)/, token: "number" },
+              { regex: /\w+~/, token: "keyword" },
+              { regex: /[0-9]+(\.[0-9]+)?/, token: "number" },
+              { regex: /".*?("|$)/, token: "string" },
+              { regex: /'.*?'/, token: "string" },
+              { regex: /^\&[^ ]+/, token: "variable-2" } ]
+      });
+
+      var myCodeMirror = CodeMirror(document.getElementById("code_editor"), {
+          value: "\nprint(\"Hello, world!\")\n",
+          theme: "base16-dark",
+          lineNumbers: true,
+          mode: "simplemode"
+      });
+
+      myCodeMirror.setSize(null, "100%");
+
+      var datal = [ 0 ];
+      var datar = [ 0 ];
+      var length = 44100;
+      var mono = true;
+
+      function set_length(x) { length = x; }
+
+      function add_to_data(x, y) {
+          datal.push(x);
+          datar.push(y);
+      }
+
+      function log(message)
+      {
+          document.getElementById("out").innerHTML += message + '\n';
+      }
+
+      var Module = {
+          'onRuntimeInitialized': function() {
+              document.getElementById("indicator").innerHTML = "WASM is ready.";
+              document.getElementById("interp").disabled = false;
+          },
+          'print': function(message) { log(message); }
+      };
+
+      var audio_context = new (window.AudioContext || window.webkitAudioContext)();
+      var source = audio_context.createBufferSource();
+
+      function parse_code() {
+          document.getElementById("out").innerHTML = "";
+          log("========== Running  ==========");
+          document.getElementById("indicator").innerHTML = "Evaluating...";
+          document.getElementById("interp").disabled = true;
+          document.getElementById("kill").disabled = true;
+          var success = Module.parse(" " + myCodeMirror.getValue());
+          if (!success) {
+              document.getElementById("interp").disabled = false;
+              document.getElementById("indicator").innerHTML = "WASM is ready.";
+              log("========== Finished ==========");
+
+              return;
+          }
+          log("Parsed successfully");
+
+          setTimeout(function() { 
+              for (var n = 0; n < length / 64; n++) {
+                  Module.run();
+              }
+
+              audio_context = new (window.AudioContext || window.webkitAudioContext)();
+              var buffer = audio_context.createBuffer(2, length, 44100);
+              source = audio_context.createBufferSource();
+
+              var x = buffer.getChannelData(0);
+              var y = buffer.getChannelData(1);
+              if (!mono) {
+                  for (var n = 0; n < length; n++) {
+                      x[n] = datal[n];
+                      y[n] = datar[n];
+                  }
+              }
+              else {
+                  for (var n = 0; n < length; n++) {
+                      x[n] = datal[n];
+                      y[n] = datal[n];
+                  }
+              }
+              length = 44100;
+
+              source.buffer = buffer;
+
+              source.connect(audio_context.destination);
+              document.getElementById("indicator").innerHTML = "Playing...";
+
+              setTimeout(function() { 
+                  document.getElementById("kill").disabled = false
+
+                  source.start();
+                  source.onended = function() {
+                      document.getElementById("interp").disabled = false;
+                      document.getElementById("kill").disabled = true;
+                      document.getElementById("indicator").innerHTML = "WASM is ready.";
+                      log("========== Finished ==========");
+                  }
+
+                  datal = [];
+                  datar = [];
+              }, 100);
+          }, 100);
+      }
+
+      function select_tab(tab_name) {
+          var text = document.getElementById("main_text");
+          if (tab_name == 'tutorial') text.innerHTML = TUTORIAL;
+          if (tab_name == 'overview') text.innerHTML = OVERVIEW;
+          if (tab_name == 'deployment') text.innerHTML = DEPLOYMENT;
+          if (tab_name == 'reference') text.innerHTML = REFERENCE;
+      }
+
+      select_tab('overview');
+
+      function load_preset() {
+          var preset = document.getElementById("preset").value;
+
+          var client = new XMLHttpRequest();
+          client.open("GET", "res/test_programs/" + preset + ".vlsng");
+          client.onreadystatechange = function() {
+              myCodeMirror.setValue(client.responseText);
+          }
+          client.send();
+      }
+
+      load_preset("tone");
+    </script>
+    <script src="a.out.js"></script>
+</body>
+</html>

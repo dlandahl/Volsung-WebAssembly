@@ -1,0 +1,4 @@
+
+pcm_data: read_file("files/chord")
+print(reverse(pcm_data[10..20]))
+
