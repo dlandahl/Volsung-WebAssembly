@@ -333,10 +333,18 @@
 
       function select_tab(tab_name) {
           var text = document.getElementById("main_text");
-          if (tab_name == 'tutorial') text.innerHTML = TUTORIAL;
-          if (tab_name == 'overview') text.innerHTML = OVERVIEW;
-          if (tab_name == 'deployment') text.innerHTML = DEPLOYMENT;
-          if (tab_name == 'reference') text.innerHTML = REFERENCE;
+
+          var client = new XMLHttpRequest();
+          client.open("GET", "tabs/" + tab_name + ".html");
+          client.onreadystatechange = function() {
+              text.innerHTML = client.responseText;
+          }
+          client.send();
+
+//          if (tab_name == 'tutorial') text.innerHTML = TUTORIAL;
+//          if (tab_name == 'overview') text.innerHTML = OVERVIEW;
+//          if (tab_name == 'deployment') text.innerHTML = DEPLOYMENT;
+//          if (tab_name == 'reference') text.innerHTML = REFERENCE;
       }
 
       select_tab('overview');

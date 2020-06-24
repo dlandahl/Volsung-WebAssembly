@@ -18,7 +18,9 @@ int main(int argc, char ** argv)
 {
     set_debug_callback([] (std::string message) { std::cout << message << std::endl; });
     prog.configure_io(1, 2);
-    
+
+    // set_library_path("../Volsung/extra/standard_library/");
+
     Program::add_directive("length", [] (std::vector<TypedValue> arguments, Program*) {
         EM_ASM_({
             set_length($0);
