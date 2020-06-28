@@ -53,7 +53,7 @@ Granular_Voice <0, 1>: {
 
 &length 10s
 
-data: read_file("files/chord_l")
+data: read_file("files/drumbeat")
 num_grains: 15
 respawn_interval_bounds: { 150ms, 500ms }
 

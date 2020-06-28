@@ -1,0 +1,115 @@
+<script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
+
+<h2>C++ API Explanation</h2>
+<h3>Parse and Render</h3>
+The C++ API lets you parse code and render audio data from the resulting processing graph.
+It is designed to be used when you want to run the language in your own game engine, plugin format, website, or app.
+You may choose to expose a textual code editor to the end user, or maybe you just want to use the language to generate sound that you need.
+<br /><br />
+The function below takes a string of domain specific code and returns 32bit-float LPCM data at the rate returned by <code>Volsung::get_sample_rate()</code>
+<pre class="prettyprint">
+#include "Volsung.hh"
+
+inline auto
+render_audio(const std::string& volsung_code) -> Volsung::MultichannelBuffer {
+    Volsung::Program program;
+    program.configure_io(0, 1);
+
+    // Reset will add the IO channels but remove everything else. Call it here.
+    program.reset();
+
+    Volsung::Parser parser;
+    parser.source_code = volsung_code;
+    parser.parse_program(program);
+
+    Volsung::MultichannelBuffer output = program.run();
+
+    return output;
+}
+</pre>
+
+
+<h3>Create User Callbacks</h3>
+
+You can also expose custom functions that can be called from the audio code to communicate back with your C++ software. In fact, arbitrary symbols of any type (Function, Textual data, Numeric values, Sequences of numeric values) can be intoduced into the symbol table before parsing and be accessed later. Inserting sequences and numbers into the audio code is useful for moving static (non-realtime) audio or control data into the graph. For real-time control and audio input, use the regular IO system as above - the <code>run</code> function can take a multichannel buffer as input, and this data will be streamed to the <code>input</code> node in the graph.
+<br /><br />
+
+Use the <code>Procedure::Implementation</code> type to specify a functor that should be exposed in the audio code.
+It takes as parameters a list of arguments and is passed the program in which it was invoked.
+This way, functions could for example add symbols programatically, or create entire graph sections as we will see below.
+
+<pre class="prettyprint">
+inline auto
+create_custom_program() -> Volsung::Program {
+    Volsung::Program program;
+    program.configure_io(0, 1);
+    program.reset();
+
+    Volsung::Procedure::Implementation impl =
+        [] (const Volsung::ArgumentList& args, Volsung::Program*) -> Volsung::TypedValue {
+        user_callback(args);
+    };
+
+    const std::size_t min_args = 2;
+    const std::size_t max_args = 2;
+    Volsung::Procedure proc(impl, min_args, max_args);
+
+    auto control_data = (Volsung::Sequence) get_std_vector_of_floats();
+
+    program.add_symbol("do_thing",     (Volsung::TypedValue) proc);
+    program.add_symbol("control_data", (Volsung::TypedValue) control_data);
+
+    return program;
+}
+</pre>
+
+
+<h3>Create Graphs</h3>
+You can create graph nodes and connect them in a certain configuration without going through the parser if you want. This is useful when you want a certain graph structure to exist in the background, which the user can build on top of using audio code. You could also specify all your audio processing like this, but why would you do that when the language syntax is so beautiful.
+<br /><br />
+The program below will be a complete tone generator, even if you don't parse any code at all.
+
+<pre class="prettyprint">
+inline auto
+create_custom_program() -> Volsung::Program {
+    Volsung::Program program;
+    program.configure_io(0, 1);
+    program.reset();
+
+    program.create_object&lt;SawObject&gt; ("oscillator", { (Number) 440.f });
+    program.create_object&lt;MultObject&gt;("gain",       { (Number) 0.5f });
+    program.connect_objects("oscillator", 0, "gain",   0);
+    program.connect_objects("gain",       0, "output", 0);
+
+    return program;
+}
+</pre>
+
+
+<h3>Create Custom User Objects</h3>
+If you have more specialised requirements for how data is moved into or out-of the graph, or you want to implement a particular DSP process in C++ for performance reasons, you can create arbitrary graph nodes with C++ callbacks as implementations.
+
+After calling the function below and parsing some code into the program, <code>my_dsp_process</code> will be available as a node in the signal processing graph and you can use it to process audio as normal.
+
+<pre class="prettyprint">
+inline auto
+create_custom_program() -> Volsung::Program {
+    Volsung::Program program;
+    program.configure_io(0, 1);
+    program.reset();
+
+    using Buffer = Volsung::MultichannelBuffer;
+
+    Volsung::AudioProcessingCallback impl = [] (const Buffer& input, Buffer& output, std::any) {
+        for (size_t n = 0; n < Volsung::AudioBuffer::Blocksize; n++) {
+            output[0][n] = some_transfer_function(input[0][n]);
+        }
+    }
+
+    const std::size_t num_inputs  = 1;
+    const std::size_t num_outputs = 1;
+    Volsung::create_user_object("my_dsp_process", num_inputs, num_outputs, nullptr, impl);
+
+    return program;
+}
+</pre>
